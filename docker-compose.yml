@@ -1,0 +1,32 @@
+version: "3.8"
+services:
+  node:
+    build: ./node-api
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/careertwin
+      - AI_SERVICE_URL=http://python:8000/analyze
+    depends_on:
+      - mongo
+      - python
+
+  python:
+    build: ./python-ai
+    ports:
+      - "8000:8000"
+
+  java:
+    build: ./java-gateway
+    ports:
+      - "8080:8080"
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
