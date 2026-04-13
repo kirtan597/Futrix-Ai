@@ -1,74 +1,231 @@
-/* CareerTwin AI — Global Styles (Ocean Blue + White Theme) */
+/* CareerTwin AI — Global Styles (Monochrome SaaS — Black · Gray · White) */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&display=swap');
 
-/* ─── Smooth scrolling ───────────────────────────────────────────────────── */
+/* ─── Reset + Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 html {
   scroll-behavior: smooth;
 }
 
-html,
-body,
-#root {
+html, body, #root {
   height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #0a0a0a;
+  color: #ffffff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ─── Link reset ─────────────────────────────────────────────────────────── */
 a {
   text-decoration: none;
+  color: inherit;
 }
 
-/* ─── Custom scrollbar (ocean blue) ─────────────────────────────────────── */
+/* ─── Custom scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f0f8ff;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #0e6dcd, #00b4ea);
+  background: rgba(255,255,255,0.12);
   border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #0a5db0, #0e6dcd);
+  background: rgba(255,255,255,0.22);
 }
 
-/* ─── Selection color ────────────────────────────────────────────────────── */
+/* ─── Selection ──────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(14, 109, 205, 0.2);
-  color: #071730;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
-/* ─── Keyframe animations ────────────────────────────────────────────────── */
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.6; }
-  50%       { opacity: 1; }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) scale(1);    }
+  50%       { transform: translateY(-12px) scale(1.02); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1);    }
+  50%       { opacity: 0.8; transform: scale(1.05); }
 }
 
 @keyframes shimmer {
   0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  100% { background-position:  200% center; }
 }
 
-/* ─── Utility: animated gradient text ───────────────────────────────────── */
+@keyframes spin-slow {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes dash-draw {
+  from { stroke-dashoffset: 600; }
+}
+
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(255,255,255,0.06); }
+  50%       { border-color: rgba(255,255,255,0.16); }
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+.fade-up {
+  animation: fadeUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease both;
+}
+
+.float {
+  animation: float 3.5s ease-in-out infinite;
+}
+
+.float-slow {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
 .gradient-text {
-  background: linear-gradient(135deg, #0e6dcd 0%, #00b4ea 50%, #00d4ff 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #a3a3a3 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #ffffff 0%, #737373 50%, #ffffff 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: shimmer 3s linear infinite;
+}
+
+/* Glass surface */
+.glass {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Noise texture overlay */
+.noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Grid dot pattern */
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Line grid */
+.line-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Recharts custom overrides */
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #1a1a1a !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 10px !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+/* Kill the default white background on the Recharts wrapper surface */
+.recharts-surface {
+  overflow: visible;
+  background: transparent !important;
+}
+/* Force ALL Recharts SVG elements to transparent background */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-surface,
+.recharts-layer {
+  background: transparent !important;
+}
+/* Recharts polar grid default white fill fix */
+.recharts-polar-grid-concentric polygon,
+.recharts-polar-grid-concentric circle {
+  fill: transparent !important;
+}
+/* Recharts cartesian background rect */
+.recharts-cartesian-grid rect,
+.recharts-pie rect,
+.recharts-radar rect {
+  fill: transparent !important;
+}
+
+.recharts-legend-item-text {
+  color: #a3a3a3 !important;
+  font-size: 0.78rem !important;
+}
+
+/* MUI Drawer override for sidebar */
+.sidebar-drawer .MuiDrawer-paper {
+  background: #0f0f0f;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Sidebar nav active item animation */
+@keyframes nav-active-slide {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
 }

@@ -59,3 +59,6 @@ logs/
 
 # ─── Docker ─────────────────────────────────────────
 .dockerignore
+
+# ─── Generated Context ──────────────────────────────
+project_full_context.txt

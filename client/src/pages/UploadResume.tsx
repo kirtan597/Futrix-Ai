@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDropzone } from 'react-dropzone';
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
@@ -10,10 +9,14 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
-import ArticleIcon from '@mui/icons-material/Article';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LinearProgress from '@mui/material/LinearProgress';
+
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
+import EastIcon from '@mui/icons-material/East';
 
 const SAMPLE_RESUME = `Software Engineer with 3 years of experience.
 
@@ -25,300 +28,367 @@ Experience:
 - Worked in Agile/Scrum teams`;
 
 const STEPS = [
-  { num: '01', text: 'AI scans your text for 40+ technologies' },
-  { num: '02', text: 'Gaps are identified based on your stack' },
-  { num: '03', text: 'A readiness score (0–100%) is calculated' },
-  { num: '04', text: 'A personalized roadmap is generated' },
+    { num: '01', text: 'AI scans your text for 40+ technologies' },
+    { num: '02', text: 'Gaps are identified based on your stack' },
+    { num: '03', text: 'A readiness score (0–100) is calculated' },
+    { num: '04', text: 'A personalized roadmap is generated' },
 ];
 
 const TIPS = [
-  'Include all technologies you have used',
-  'Mention job titles and project names',
-  'Add tools, frameworks, and methodologies',
-  'Include cloud services (AWS, Azure, GCP)',
+    'Include all technologies you have used',
+    'Mention job titles and project names',
+    'Add tools, frameworks, and methodologies',
+    'Include cloud services (AWS, Azure, GCP)',
 ];
 
-const FEATURES = [
-  { label: '40+ Skills Detected' },
-  { label: 'Gap Analysis' },
-  { label: 'Readiness Score' },
-  { label: 'Learning Roadmap' },
-];
+// ─── Glass card ───────────────────────────────────────────────────────────────
+function Panel({ children, sx = {} }: { children: React.ReactNode; sx?: object }) {
+    return (
+        <Box sx={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.065)',
+            borderRadius: '18px',
+            backdropFilter: 'blur(12px)',
+            ...sx,
+        }}>
+            {children}
+        </Box>
+    );
+}
+
+// ─── Analysis loading overlay ─────────────────────────────────────────────────
+function AnalyzingOverlay({ visible }: { visible: boolean }) {
+    if (!visible) return null;
+    const steps = ['Parsing resume...', 'Extracting skills...', 'Detecting gaps...', 'Scoring readiness...', 'Building roadmap...'];
+    const [step, setStep] = React.useState(0);
+    React.useEffect(() => {
+        if (!visible) return;
+        const t = setInterval(() => setStep(prev => Math.min(prev + 1, steps.length - 1)), 900);
+        return () => clearInterval(t);
+    }, [visible]);
+
+    return (
+        <Box sx={{
+            position: 'fixed', inset: 0, zIndex: 999,
+            background: 'rgba(10,10,10,0.85)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexDirection: 'column',
+            gap: 3,
+        }}>
+            <Box sx={{
+                width: 64, height: 64, borderRadius: '18px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                animation: 'float 2s ease-in-out infinite',
+            }}>
+                <AutoAwesomeOutlinedIcon sx={{ fontSize: 28, color: 'rgba(255,255,255,0.7)' }} />
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+                <Typography sx={{ fontWeight: 700, color: '#fff', fontSize: '1.1rem', letterSpacing: '-0.02em', mb: 1 }}>
+                    Analyzing with AI
+                </Typography>
+                <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.85rem', mb: 3 }}>
+                    {steps[step]}
+                </Typography>
+                <Box sx={{ width: 220, mx: 'auto' }}>
+                    <LinearProgress
+                        variant="determinate"
+                        value={((step + 1) / steps.length) * 100}
+                        sx={{
+                            height: 2,
+                            borderRadius: 99,
+                            background: 'rgba(255,255,255,0.05)',
+                            '& .MuiLinearProgress-bar': { background: 'rgba(255,255,255,0.5)' },
+                        }}
+                    />
+                </Box>
+            </Box>
+        </Box>
+    );
+}
 
 export default function UploadResume() {
-  const [resumeText, setResumeText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+    const [resumeText, setResumeText] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    const email = localStorage.getItem('userEmail') || '';
-    const token = localStorage.getItem('token') || '';
-    try {
-      const response = await fetch('/api/upload-resume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ text: resumeText, email }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem('analysisResult', JSON.stringify(data));
-        navigate('/dashboard');
-      } else if (response.status === 401) {
-        localStorage.clear();
-        navigate('/login');
-      } else {
-        setError(data.error || 'Analysis failed. Please try again.');
-      }
-    } catch {
-      setError('Cannot connect to Node.js API on port 5000. Is it running?');
-    } finally {
-      setLoading(false);
-    }
-  };
+    // ── Dropzone ──
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        const file = acceptedFiles[0];
+        if (file && file.type === 'text/plain') {
+            const reader = new FileReader();
+            reader.onload = (e) => setResumeText((e.target?.result as string) || '');
+            reader.readAsText(file);
+        }
+    }, []);
 
-  return (
-    <Box
-      sx={{
-        minHeight: 'calc(100vh - 68px)',
-        background: 'linear-gradient(160deg, #f5faff 0%, #eaf4fd 60%, #f0f8ff 100%)',
-        py: 6,
-        px: { xs: 2, md: 4 },
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Ambient glow */}
-      <Box sx={{
-        position: 'absolute', top: '-10%', right: '-5%',
-        width: '45vw', height: '45vh', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(0,180,234,0.08) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        noClick: true,
+        accept: { 'text/plain': ['.txt'] },
+    });
 
-      <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
+    const handleUpload = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        const email = localStorage.getItem('userEmail') || '';
+        const token = localStorage.getItem('token') || '';
+        try {
+            const response = await fetch('/api/upload-resume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ text: resumeText, email }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                localStorage.setItem('analysisResult', JSON.stringify(data));
+                navigate('/dashboard');
+            } else if (response.status === 401) {
+                localStorage.clear();
+                navigate('/login');
+            } else {
+                setError(data.error || 'Analysis failed. Please try again.');
+            }
+        } catch {
+            setError('Cannot connect to Node.js API on port 5000. Is it running?');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        {/* ── Page Header ── */}
-        <Box sx={{ mb: 5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+    const charCount = resumeText.trim().length;
+    const isReady = charCount >= 10;
+
+    return (
+        <>
+            <AnalyzingOverlay visible={loading} />
             <Box sx={{
-              width: 40, height: 40, borderRadius: '11px',
-              background: 'linear-gradient(135deg, #0e6dcd 0%, #00b4ea 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 6px 18px rgba(14,109,205,0.3)',
+                minHeight: '100vh',
+                background: '#0a0a0a',
+                py: { xs: 3, md: 5 },
+                px: { xs: 2, sm: 3, md: 5 },
             }}>
-              <ArticleIcon sx={{ color: '#fff', fontSize: 20 }} />
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#0e6dcd', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.2 }}>
-                Resume Analysis
-              </Typography>
-              <Typography variant="h4" fontWeight={800} sx={{ color: '#071730', letterSpacing: '-0.03em', lineHeight: 1 }}>
-                Paste Your Resume
-              </Typography>
-            </Box>
-          </Box>
-
-          <Typography color="text.secondary" sx={{ fontSize: '0.95rem', mb: 2.5, maxWidth: 520, lineHeight: 1.7, ml: '56px' }}>
-            Our AI engine will extract your skills, identify market gaps, and generate a personalized career roadmap.
-          </Typography>
-
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: '56px' }}>
-            {FEATURES.map((f) => (
-              <Chip
-                key={f.label}
-                label={f.label}
-                size="small"
-                icon={<CheckCircleIcon sx={{ fontSize: '13px !important', color: '#00b4ea !important' }} />}
-                sx={{
-                  background: 'rgba(14,109,205,0.07)',
-                  border: '1px solid rgba(14,109,205,0.18)',
-                  color: '#0e6dcd',
-                  fontWeight: 600,
-                  fontSize: '0.76rem',
-                  px: 0.5,
-                }}
-              />
-            ))}
-          </Box>
-        </Box>
-
-        {/* ── Main grid ── */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 300px' }, gap: 3 }}>
-
-          {/* ── Main upload card ── */}
-          <Card sx={{
-            boxShadow: '0 8px 40px rgba(14,109,205,0.10)',
-            border: '1px solid rgba(14,109,205,0.15)',
-            overflow: 'hidden',
-          }}>
-            {/* Top accent bar */}
-            <Box sx={{
-              height: 3,
-              background: 'linear-gradient(90deg, #0e6dcd 0%, #00b4ea 50%, #00d4ff 100%)',
-            }} />
-            <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-                <Typography variant="h6" fontWeight={700} sx={{ color: '#071730' }}>
-                  Resume Text
-                </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setResumeText(SAMPLE_RESUME)}
-                  startIcon={<AutoAwesomeIcon sx={{ fontSize: '15px !important' }} />}
-                  sx={{
-                    px: 2, fontSize: '0.8rem', borderRadius: '8px',
-                    borderColor: 'rgba(14,109,205,0.3)',
-                    color: '#0e6dcd',
-                    '&:hover': {
-                      borderColor: '#0e6dcd',
-                      background: 'rgba(14,109,205,0.06)',
-                    },
-                  }}
-                >
-                  Use Sample
-                </Button>
-              </Box>
-
-              <Divider sx={{ mb: 3, borderColor: 'rgba(14,109,205,0.1)' }} />
-
-              <Box component="form" onSubmit={handleUpload}>
-                <TextField
-                  multiline
-                  minRows={12}
-                  fullWidth
-                  placeholder={`Paste your resume text here...\n\ne.g. Skills: React, Python, Docker\nExperience: Software Engineer at...`}
-                  value={resumeText}
-                  onChange={(e) => setResumeText(e.target.value)}
-                  required
-                  sx={{
-                    mb: 3,
-                    '& .MuiOutlinedInput-root': {
-                      alignItems: 'flex-start',
-                      fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.75,
-                      background: '#f8fbff',
-                    },
-                  }}
-                />
-
-                {error && (
-                  <Alert severity="error" sx={{ mb: 2.5, borderRadius: '10px' }}>
-                    {error}
-                  </Alert>
-                )}
-
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  disabled={loading || resumeText.trim().length < 10}
-                  sx={{
-                    py: 1.6,
-                    fontSize: '1rem',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #0e6dcd 0%, #00b4ea 100%)',
-                    boxShadow: '0 6px 24px rgba(14,109,205,0.4)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #0a5db0 0%, #0e6dcd 100%)',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 10px 32px rgba(14,109,205,0.5)',
-                    },
-                    '&.Mui-disabled': {
-                      background: 'linear-gradient(135deg, #0e6dcd 0%, #00b4ea 100%)',
-                      opacity: 0.5,
-                    },
-                  }}
-                >
-                  {loading ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <CircularProgress size={20} sx={{ color: 'rgba(255,255,255,0.8)' }} />
-                      Analyzing with AI...
+                {/* ── Header ── */}
+                <Box sx={{ mb: 5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                        <Box sx={{
+                            width: 36, height: 36, borderRadius: '10px',
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <ArticleOutlinedIcon sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 18 }} />
+                        </Box>
+                        <Box>
+                            <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase', mb: 0.2 }}>
+                                Resume Analysis
+                            </Typography>
+                            <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>
+                                Upload Resume
+                            </Typography>
+                        </Box>
                     </Box>
-                  ) : (
-                    '🚀  Generate AI Career Report'
-                  )}
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-
-          {/* ── Info sidebar ── */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-
-            {/* What happens next card — ocean dark */}
-            <Box sx={{
-              borderRadius: '16px',
-              background: 'linear-gradient(145deg, #071730 0%, #0a2548 100%)',
-              border: '1px solid rgba(0,180,234,0.15)',
-              p: 3,
-              boxShadow: '0 10px 36px rgba(4,15,36,0.2)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}>
-              {/* Glow blob */}
-              <Box sx={{
-                position: 'absolute', top: -30, right: -30, width: 100, height: 100,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(0,180,234,0.2), transparent)',
-                pointerEvents: 'none',
-              }} />
-              <Typography sx={{ fontWeight: 700, color: '#00b4ea', fontSize: '0.85rem', mb: 2.5, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                What happens next?
-              </Typography>
-              {STEPS.map(({ num, text }) => (
-                <Box key={num} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start' }}>
-                  <Typography sx={{
-                    color: '#00b4ea', fontWeight: 800, fontSize: '0.7rem', mt: '2px',
-                    minWidth: 24, fontFamily: 'monospace',
-                    background: 'rgba(0,180,234,0.1)',
-                    border: '1px solid rgba(0,180,234,0.2)',
-                    borderRadius: '5px',
-                    px: 0.6, py: 0.2,
-                    textAlign: 'center',
-                  }}>
-                    {num}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', lineHeight: 1.6, fontSize: '0.83rem' }}>
-                    {text}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-
-            {/* Tips card — white */}
-            <Card sx={{ border: '1px solid rgba(14,109,205,0.15)', boxShadow: '0 4px 20px rgba(14,109,205,0.08)' }}>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <TipsAndUpdatesIcon sx={{ color: '#00b4ea', fontSize: 20 }} />
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#071730' }}>
-                    Tips for best results
-                  </Typography>
-                </Box>
-                <Divider sx={{ mb: 2, borderColor: 'rgba(14,109,205,0.1)' }} />
-                {TIPS.map((tip) => (
-                  <Box key={tip} sx={{ display: 'flex', gap: 1.2, mb: 1.2, alignItems: 'flex-start' }}>
-                    <Box sx={{
-                      width: 5, height: 5, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #0e6dcd, #00b4ea)',
-                      flexShrink: 0, mt: '8px',
-                    }} />
-                    <Typography variant="body2" sx={{ color: '#3a5a80', lineHeight: 1.6, fontSize: '0.83rem' }}>
-                      {tip}
+                    <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', lineHeight: 1.7, ml: '52px', maxWidth: 500, mb: 2 }}>
+                        Our AI engine will extract your skills, identify market gaps, and generate a personalized career roadmap.
                     </Typography>
-                  </Box>
-                ))}
-              </CardContent>
-            </Card>
-          </Box>
-        </Box>
-      </Box>
-    </Box>
-  );
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: '52px' }}>
+                        {['40+ Skills', 'Gap Analysis', 'Score 0–100', 'Roadmap'].map((f) => (
+                            <Chip
+                                key={f}
+                                label={f}
+                                size="small"
+                                icon={<CheckCircleOutlineIcon sx={{ fontSize: '12px !important', color: 'rgba(255,255,255,0.3) !important' }} />}
+                                sx={{
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    fontWeight: 600, fontSize: '0.73rem',
+                                }}
+                            />
+                        ))}
+                    </Box>
+                </Box>
+
+                {/* ── Main grid ── */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 288px' }, gap: 2.5 }}>
+
+                    {/* ── Upload card ── */}
+                    <Panel>
+                        {/* Dropzone header */}
+                        <Box
+                            {...getRootProps()}
+                            sx={{
+                                p: 3,
+                                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                borderRadius: '18px 18px 0 0',
+                                transition: 'background 0.2s',
+                                ...(isDragActive ? { background: 'rgba(255,255,255,0.05)' } : {}),
+                            }}
+                        >
+                            <input {...getInputProps()} />
+                            {isDragActive ? (
+                                <Box sx={{ textAlign: 'center', py: 3 }}>
+                                    <CloudUploadOutlinedIcon sx={{ fontSize: 36, color: 'rgba(255,255,255,0.5)', mb: 1 }} />
+                                    <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>Drop your .txt file here</Typography>
+                                </Box>
+                            ) : (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+                                        Resume Text
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => setResumeText(SAMPLE_RESUME)}
+                                            startIcon={<AutoAwesomeOutlinedIcon sx={{ fontSize: '14px !important' }} />}
+                                            sx={{ fontSize: '0.75rem', borderRadius: '8px', px: 1.5 }}
+                                        >
+                                            Sample
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => setResumeText('')}
+                                            sx={{ fontSize: '0.75rem', borderRadius: '8px', px: 1.5 }}
+                                            disabled={!resumeText}
+                                        >
+                                            Clear
+                                        </Button>
+                                    </Box>
+                                </Box>
+                            )}
+                        </Box>
+
+                        {/* Textarea + submit */}
+                        <Box component="form" onSubmit={handleUpload} sx={{ p: 3 }}>
+                            <TextField
+                                multiline
+                                minRows={13}
+                                fullWidth
+                                placeholder={`Paste your resume text here...\n\ne.g.,  Skills: React, Python, Docker\nExperience: Software Engineer at...`}
+                                value={resumeText}
+                                onChange={(e) => setResumeText(e.target.value)}
+                                required
+                                sx={{
+                                    mb: 2,
+                                    '& .MuiOutlinedInput-root': {
+                                        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                                        fontSize: '0.845rem',
+                                        lineHeight: 1.75,
+                                    },
+                                }}
+                            />
+
+                            {/* Char count */}
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
+                                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)' }}>
+                                    Drag & drop a .txt file, or paste below
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.72rem', color: charCount > 50 ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.2)' }}>
+                                    {charCount} chars
+                                </Typography>
+                            </Box>
+
+                            {error && (
+                                <Alert severity="error" sx={{ mb: 2.5 }}>
+                                    {error}
+                                </Alert>
+                            )}
+
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                fullWidth
+                                size="large"
+                                disabled={loading || !isReady}
+                                endIcon={<EastIcon />}
+                                sx={{ py: 1.55, fontSize: '0.9rem', borderRadius: '12px', fontWeight: 700 }}
+                            >
+                                Generate AI Career Report
+                            </Button>
+                        </Box>
+                    </Panel>
+
+                    {/* ── Sidebar ── */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+                        {/* What happens next */}
+                        <Panel sx={{ p: 2.5 }}>
+                            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 2.5 }}>
+                                What happens next
+                            </Typography>
+                            {STEPS.map(({ num, text }) => (
+                                <Box key={num} sx={{ display: 'flex', gap: 1.8, mb: 1.8, alignItems: 'flex-start' }}>
+                                    <Typography sx={{
+                                        fontWeight: 800, fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)',
+                                        minWidth: 26, fontFamily: 'monospace',
+                                        background: 'rgba(255,255,255,0.04)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '5px',
+                                        px: 0.7, py: 0.3, textAlign: 'center',
+                                    }}>
+                                        {num}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.81rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>
+                                        {text}
+                                    </Typography>
+                                </Box>
+                            ))}
+                        </Panel>
+
+                        {/* Tips */}
+                        <Panel sx={{ p: 2.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <TipsAndUpdatesOutlinedIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.3)' }} />
+                                <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>
+                                    Tips for best results
+                                </Typography>
+                            </Box>
+                            <Divider sx={{ mb: 2 }} />
+                            {TIPS.map((tip) => (
+                                <Box key={tip} sx={{ display: 'flex', gap: 1.2, mb: 1.3, alignItems: 'flex-start' }}>
+                                    <Box sx={{
+                                        width: 4, height: 4, borderRadius: '50%',
+                                        background: 'rgba(255,255,255,0.25)',
+                                        flexShrink: 0, mt: '8px',
+                                    }} />
+                                    <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
+                                        {tip}
+                                    </Typography>
+                                </Box>
+                            ))}
+                        </Panel>
+
+                        {/* Upload indicator */}
+                        {charCount > 0 && (
+                            <Panel sx={{ p: 2, borderColor: 'rgba(255,255,255,0.1)' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 1.5 }}>
+                                    <CircularProgress
+                                        variant="determinate"
+                                        value={Math.min((charCount / 200) * 100, 100)}
+                                        size={26}
+                                        thickness={3}
+                                        sx={{ color: 'rgba(255,255,255,0.5)' }}
+                                    />
+                                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>
+                                        {isReady ? 'Ready to analyze' : 'Keep typing...'}
+                                    </Typography>
+                                </Box>
+                                <LinearProgress
+                                    variant="determinate"
+                                    value={Math.min((charCount / 200) * 100, 100)}
+                                    sx={{ height: 2, borderRadius: 99 }}
+                                />
+                            </Panel>
+                        )}
+                    </Box>
+                </Box>
+            </Box>
+        </>
+    );
 }
