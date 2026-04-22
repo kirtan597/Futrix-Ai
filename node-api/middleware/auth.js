@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "CareerTwinSuperSecretKey_32chars!!"; // Must match JwtUtil.java exactly
+const JWT_SECRET = process.env.JWT_SECRET || "FutrixAiSuperSecretKey_32chars!!!"; // Must match JwtUtil.java exactly
 
 module.exports = (req, res, next) => {
     const token = req.header("Authorization");

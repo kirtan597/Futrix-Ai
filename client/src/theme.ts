@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 
-// ─── CareerTwin AI — Monochrome SaaS Design System ───────────────────────────
+// ─── Futrix AI — Monochrome SaaS Design System ───────────────────────────
 // Sophisticated black, white & gray palette. Premium, minimal, data-forward.
 
 export const MONO = {

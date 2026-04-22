@@ -1,10 +1,13 @@
 """
-CareerTwin AI Engine v2.0
-Pure Python skill extraction + scoring + career path matching.
+Futrix AI Engine v2.1
+Strict text-bounded skill extraction + scoring + career path matching.
+Only detects skills that are actually present in the resume text.
+All analysis is derived strictly from the pasted text — no hallucination.
 """
 import json
 import os
-from typing import List, Dict, Any
+import re
+from typing import List, Dict, Any, Set
 
 # ─── Skills database ──────────────────────────────────────────────────────────
 try:
@@ -22,6 +25,29 @@ except Exception:
         "Microservices", "Agile", "Scrum", "Go", "Rust", "C++", "C#",
         "Spark", "Airflow", "Hadoop", "Elasticsearch", "RabbitMQ",
     ]
+
+# ─── Ambiguous short terms that need word-boundary matching ───────────────────
+# These short terms can easily cause false positives with substring matching
+# (e.g. "Go" in "Google", "AI" in "email", "R" in "React").
+_BOUNDARY_SKILLS = {"Go", "AI", "R", "C", "C#", "C++", "SQL", "GCP", "CSS", "HTML"}
+
+
+def _skill_present(skill: str, text: str) -> bool:
+    """
+    Check if a skill is genuinely present in the resume text.
+    Uses word-boundary regex for short/ambiguous terms to prevent false positives.
+    Uses case-insensitive substring match for longer, unambiguous terms.
+    """
+    if skill in _BOUNDARY_SKILLS:
+        # Escape for regex (handles C++, C#, etc.)
+        escaped = re.escape(skill)
+        # Word-boundary match, case-insensitive
+        pattern = rf'(?<![a-zA-Z]){escaped}(?![a-zA-Z])'
+        return bool(re.search(pattern, text, re.IGNORECASE))
+    else:
+        # Standard case-insensitive substring match for unambiguous multi-char terms
+        return skill.lower() in text.lower()
+
 
 # ─── Role catalog for career path matching ────────────────────────────────────
 ROLE_CATALOG = [
@@ -63,62 +89,100 @@ ROLE_CATALOG = [
 ]
 
 
-# ─── Core analysis ────────────────────────────────────────────────────────────
+# ─── Core analysis (strict text-bounded) ─────────────────────────────────────
 def analyze_resume(text: str) -> Dict[str, Any]:
-    text_lower = text.lower()
+    """
+    Analyzes resume text using ONLY the content provided.
+    - Skills: only those explicitly found in the text via precise matching
+    - Gaps: only suggested relative to the skills actually detected
+    - Score: calculated solely from what was found
+    - Roadmap: generated only from identified gaps
+    """
+    # 1. Strict skill extraction — only skills genuinely present in text
+    found_skills: List[str] = [s for s in KNOWN_SKILLS if _skill_present(s, text)]
+    found_skills_set: Set[str] = set(found_skills)
 
-    # 1. Skill extraction
-    found_skills: List[str] = [s for s in KNOWN_SKILLS if s.lower() in text_lower]
-
-    # 2. Gap analysis — rule-based with expanded rules
-    skill_set = set(found_skills)
+    # 2. Context-aware gap analysis
+    #    Gaps are only suggested when they are logically related to the
+    #    skills already detected. We never suggest gaps for unrelated domains.
     gaps: List[str] = []
 
-    gap_rules = [
-        (lambda s: "React" in s and "Node.js" not in s and "Django" not in s and "Java" not in s,
-         "Node.js"),
-        (lambda s: "Python" in s and "Machine Learning" not in s and "Django" not in s and "FastAPI" not in s,
-         "Django or FastAPI"),
-        (lambda s: "Docker" not in s,
-         "Docker"),
-        (lambda s: "Kubernetes" not in s and "Docker" in s,
-         "Kubernetes"),
-        (lambda s: "Git" not in s and "GitHub" not in s,
-         "Git"),
-        (lambda s: "AWS" not in s and "Azure" not in s and "GCP" not in s,
-         "Cloud Platform (AWS/Azure/GCP)"),
-        (lambda s: "CI/CD" not in s and "GitHub" not in s,
-         "CI/CD"),
-        (lambda s: "TypeScript" not in s and "JavaScript" in s,
-         "TypeScript"),
-        (lambda s: "PostgreSQL" not in s and "MySQL" not in s and "SQL" not in s and "MongoDB" not in s,
-         "SQL Database"),
-        (lambda s: "Redis" not in s and ("Node.js" in s or "Python" in s),
-         "Redis (Caching)"),
-    ]
+    # Determine what domain the user is in based on their actual skills
+    has_frontend = bool(found_skills_set & {"React", "Vue", "Angular", "JavaScript", "TypeScript", "HTML", "CSS"})
+    has_backend  = bool(found_skills_set & {"Node.js", "Python", "Java", "Django", "Flask", "FastAPI", "Spring Boot", "Express"})
+    has_devops   = bool(found_skills_set & {"Docker", "Kubernetes", "CI/CD", "Terraform", "Ansible", "Linux"})
+    has_cloud    = bool(found_skills_set & {"AWS", "Azure", "GCP"})
+    has_data     = bool(found_skills_set & {"SQL", "MongoDB", "PostgreSQL", "MySQL", "Redis"})
+    has_ml       = bool(found_skills_set & {"Machine Learning", "TensorFlow", "PyTorch", "Scikit-Learn", "Pandas", "NumPy"})
 
-    for rule, gap_label in gap_rules:
-        if rule(skill_set):
-            gaps.append(gap_label)
-        if len(gaps) >= 6:
-            break
+    # Only suggest gaps in domains the user is actually working in
+    if has_frontend:
+        if "TypeScript" not in found_skills_set and "JavaScript" in found_skills_set:
+            gaps.append("TypeScript")
+        if "React" not in found_skills_set and "Vue" not in found_skills_set and "Angular" not in found_skills_set:
+            gaps.append("React or Vue or Angular (Component Framework)")
 
-    if not gaps:
-        gaps.append("Advanced System Design")
+    if has_backend:
+        if "Docker" not in found_skills_set:
+            gaps.append("Docker")
+        if not has_data:
+            gaps.append("Database (SQL/MongoDB)")
 
-    # 3. Readiness score
-    base = min(90, len(found_skills) * 8 + 15)
-    penalty = len(gaps) * 3
-    raw_score = max(10, base - penalty)
-    score = min(100, raw_score)
+    if has_backend or has_frontend:
+        if "Git" not in found_skills_set and "GitHub" not in found_skills_set:
+            gaps.append("Git (Version Control)")
+        if not has_cloud:
+            gaps.append("Cloud Platform (AWS/Azure/GCP)")
+        if "CI/CD" not in found_skills_set and "GitHub" not in found_skills_set and "DevOps" not in found_skills_set:
+            gaps.append("CI/CD Pipeline")
+        if "REST API" not in found_skills_set and "GraphQL" not in found_skills_set and has_backend:
+            gaps.append("REST API or GraphQL")
 
-    # 4. Roadmap
-    roadmap = [f"Learn {g}" for g in gaps[:5]]
-    if len(roadmap) < 3:
-        roadmap.append("Build a production-grade full-stack project")
-    roadmap.append("Contribute to Open Source on GitHub")
-    roadmap.append("Study System Design patterns (microservices, caching, load balancing)")
-    roadmap.append("Prepare for behavioural + technical interviews")
+    if has_devops:
+        if "Kubernetes" not in found_skills_set and "Docker" in found_skills_set:
+            gaps.append("Kubernetes")
+        if not has_cloud:
+            gaps.append("Cloud Platform (AWS/Azure/GCP)")
+
+    if has_ml:
+        if "Docker" not in found_skills_set:
+            gaps.append("Docker (Model Deployment)")
+        if not has_cloud:
+            gaps.append("Cloud Platform for ML (AWS SageMaker / GCP Vertex AI)")
+
+    # If the user has skills but we found no context-relevant gaps, note it
+    if len(found_skills) > 0 and len(gaps) == 0:
+        gaps.append("Advanced System Design (next-level growth area)")
+
+    # Cap gaps at 6
+    gaps = gaps[:6]
+
+    # 3. Readiness score — strictly from what was found
+    if len(found_skills) == 0:
+        score = 0
+    else:
+        base = min(90, len(found_skills) * 8 + 15)
+        penalty = len(gaps) * 3
+        raw_score = max(10, base - penalty)
+        score = min(100, raw_score)
+
+    # 4. Roadmap — derived ONLY from identified gaps, no generic filler
+    roadmap: List[str] = []
+    for gap in gaps:
+        roadmap.append(f"Learn {gap}")
+
+    # Only add portfolio/interview steps if user actually has meaningful skills
+    if len(found_skills) >= 3:
+        roadmap.append("Build a portfolio project combining your detected skills")
+    if len(found_skills) >= 5:
+        roadmap.append("Prepare for technical interviews in your domain")
+
+    # If no roadmap items at all (no gaps, few skills), give honest feedback
+    if len(roadmap) == 0:
+        if len(found_skills) == 0:
+            roadmap.append("Add more technical skills and technologies to your resume")
+        else:
+            roadmap.append("Continue deepening your expertise in your current skill set")
 
     return {
         "skills":          found_skills,
@@ -128,18 +192,24 @@ def analyze_resume(text: str) -> Dict[str, Any]:
     }
 
 
-# ─── Score breakdown ──────────────────────────────────────────────────────────
+# ─── Score breakdown (strict — only from detected skills) ─────────────────────
 def score_breakdown(skills: List[str]) -> Dict[str, float]:
+    """
+    Breaks down the readiness score into categories.
+    Each category score is based ONLY on skills that were actually detected.
+    """
     s = set(skills)
 
-    frontend_skills  = {"React", "Vue", "Angular", "TypeScript", "JavaScript"}
-    backend_skills   = {"Node.js", "Python", "Java", "Go", "Django", "Flask", "FastAPI", "Spring Boot"}
+    frontend_skills  = {"React", "Vue", "Angular", "TypeScript", "JavaScript", "HTML", "CSS", "Tailwind"}
+    backend_skills   = {"Node.js", "Python", "Java", "Go", "Django", "Flask", "FastAPI", "Spring Boot", "Express"}
     cloud_skills     = {"AWS", "Azure", "GCP"}
-    devops_skills    = {"Docker", "Kubernetes", "CI/CD", "Terraform", "Ansible", "Linux"}
-    languages        = {"Python", "JavaScript", "TypeScript", "Java", "Go", "Rust", "C++", "C#"}
+    devops_skills    = {"Docker", "Kubernetes", "CI/CD", "Terraform", "Ansible", "Linux", "DevOps"}
+    languages        = {"Python", "JavaScript", "TypeScript", "Java", "Go", "Rust", "C++", "C#", "Kotlin", "Swift"}
 
     def pct(subset, cap=100):
         matched = len(s & subset)
+        if len(subset) == 0:
+            return 0.0
         return round(min(cap, (matched / max(1, len(subset))) * 100), 1)
 
     return {
@@ -151,8 +221,12 @@ def score_breakdown(skills: List[str]) -> Dict[str, float]:
     }
 
 
-# ─── Career path matching ─────────────────────────────────────────────────────
+# ─── Career path matching (strict — only from detected skills) ────────────────
 def career_paths(skills: List[str]) -> List[Dict[str, Any]]:
+    """
+    Matches detected skills against role requirements.
+    Only skills that were actually found in the resume are counted as matched.
+    """
     skills_lower = {sk.lower() for sk in skills}
     results = []
     for role in ROLE_CATALOG:

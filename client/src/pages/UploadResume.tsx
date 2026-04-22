@@ -28,10 +28,10 @@ Experience:
 - Worked in Agile/Scrum teams`;
 
 const STEPS = [
-    { num: '01', text: 'AI scans your text for 40+ technologies' },
-    { num: '02', text: 'Gaps are identified based on your stack' },
-    { num: '03', text: 'A readiness score (0–100) is calculated' },
-    { num: '04', text: 'A personalized roadmap is generated' },
+    { num: '01', text: 'AI scans your exact text for known technologies' },
+    { num: '02', text: 'Gaps are identified based on your detected stack' },
+    { num: '03', text: 'A readiness score (0–100) is calculated from your text' },
+    { num: '04', text: 'A roadmap is built from your identified gaps only' },
 ];
 
 const TIPS = [
@@ -161,7 +161,7 @@ export default function UploadResume() {
     };
 
     const charCount = resumeText.trim().length;
-    const isReady = charCount >= 10;
+    const isReady = charCount >= 50;
 
     return (
         <>
@@ -193,10 +193,10 @@ export default function UploadResume() {
                         </Box>
                     </Box>
                     <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', lineHeight: 1.7, ml: '52px', maxWidth: 500, mb: 2 }}>
-                        Our AI engine will extract your skills, identify market gaps, and generate a personalized career roadmap.
+                        Our AI engine extracts skills strictly from your pasted text — no assumptions, no hallucinations. Only what you write is analyzed.
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: '52px' }}>
-                        {['40+ Skills', 'Gap Analysis', 'Score 0–100', 'Roadmap'].map((f) => (
+                        {['Text-Only Detection', 'Gap Analysis', 'Score 0–100', 'Roadmap'].map((f) => (
                             <Chip
                                 key={f}
                                 label={f}
@@ -370,18 +370,18 @@ export default function UploadResume() {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 1.5 }}>
                                     <CircularProgress
                                         variant="determinate"
-                                        value={Math.min((charCount / 200) * 100, 100)}
+                                        value={Math.min((charCount / 50) * 100, 100)}
                                         size={26}
                                         thickness={3}
                                         sx={{ color: 'rgba(255,255,255,0.5)' }}
                                     />
                                     <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>
-                                        {isReady ? 'Ready to analyze' : 'Keep typing...'}
+                                        {isReady ? 'Ready to analyze' : `Minimum 50 chars (${50 - charCount} more)`}
                                     </Typography>
                                 </Box>
                                 <LinearProgress
                                     variant="determinate"
-                                    value={Math.min((charCount / 200) * 100, 100)}
+                                    value={Math.min((charCount / 50) * 100, 100)}
                                     sx={{ height: 2, borderRadius: 99 }}
                                 />
                             </Panel>

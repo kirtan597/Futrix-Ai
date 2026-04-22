@@ -1,4 +1,4 @@
-Write-Host "Starting CareerTwin AI Services..." -ForegroundColor Cyan
+Write-Host "Starting Futrix AI Services..." -ForegroundColor Cyan
 
 Start-Process "cmd.exe" -ArgumentList "/k mvn tomcat7:run" -WorkingDirectory "java-gateway" -WindowStyle Normal
 Start-Process "cmd.exe" -ArgumentList "/k npm install && node server.js" -WorkingDirectory "node-api" -WindowStyle Normal

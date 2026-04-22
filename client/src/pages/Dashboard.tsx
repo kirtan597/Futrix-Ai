@@ -93,12 +93,10 @@ function StatCard({ icon, value, label, sub, trend }: {
                 {trend && (
                     <Box sx={{
                         display: 'flex', alignItems: 'center', gap: 0.4,
-                        color: trend === 'up' ? '#4ade80' : trend === 'down' ? '#f87171' : 'rgba(255,255,255,0.3)',
+                        color: 'rgba(255,255,255,0.3)',
                         fontSize: '0.72rem', fontWeight: 600,
                     }}>
-                        {trend === 'up' ? <NorthOutlinedIcon sx={{ fontSize: 12 }} /> :
-                         trend === 'down' ? <SouthOutlinedIcon sx={{ fontSize: 12 }} /> : null}
-                        {trend === 'up' ? '+12%' : trend === 'down' ? '-3%' : 'stable'}
+                        {sub}
                     </Box>
                 )}
             </Box>
@@ -247,29 +245,25 @@ export default function Dashboard() {
                     icon={<BoltOutlinedIcon sx={{ fontSize: 18 }} />}
                     value={score}
                     label="Readiness Score"
-                    sub="Overall career readiness"
-                    trend="up"
+                    sub="Based on your resume text"
                 />
                 <StatCard
                     icon={<CheckCircleOutlineIcon sx={{ fontSize: 18 }} />}
                     value={skillCount}
                     label="Identified Skills"
                     sub="Matched from your resume"
-                    trend="neutral"
                 />
                 <StatCard
                     icon={<TrendingUpOutlinedIcon sx={{ fontSize: 18 }} />}
                     value={gapCount}
                     label="Skill Gaps"
                     sub="Areas to develop"
-                    trend="down"
                 />
                 <StatCard
                     icon={<AutoGraphOutlinedIcon sx={{ fontSize: 18 }} />}
                     value={data.roadmap?.length ?? 0}
                     label="Roadmap Steps"
                     sub="Personalized action plan"
-                    trend="neutral"
                 />
             </Box>
 

@@ -27,7 +27,7 @@ interface AnalysisData {
     roadmap: string[];
 }
 
-// AI tips based on gaps
+// AI tips based strictly on detected gaps — no generic filler
 function generateTips(gaps: string[]): string[] {
     const tip_map: Record<string, string> = {
         'Docker':     'Add Docker containerization to your workflow — start with a Dockerfile for your current project.',
@@ -38,14 +38,26 @@ function generateTips(gaps: string[]): string[] {
         'Redis':      'Use Redis for caching in your Node.js API — start with session management.',
         'CI/CD':      'Set up GitHub Actions for your next project — automate tests and deployments.',
         'Go':         'Go has excellent concurrency features; start with the official tour at go.dev/tour.',
+        'Git':        'Learn Git basics: branching, merging, and pull requests are essential for any dev team.',
     };
     const tips: string[] = [];
-    gaps.forEach(g => { if (tip_map[g]) tips.push(tip_map[g]); });
-    if (tips.length < 3) tips.push(
-        'Focus on projects that combine multiple skills to accelerate learning.',
-        'Contribute to open-source projects to build real-world experience.',
-        'Document your learning with a blog or GitHub portfolio.',
-    );
+    gaps.forEach(g => {
+        // Check exact match first, then partial match for compound gaps
+        if (tip_map[g]) {
+            tips.push(tip_map[g]);
+        } else {
+            // For compound gap labels like "Cloud Platform (AWS/Azure/GCP)"
+            const matchedKey = Object.keys(tip_map).find(k => g.toLowerCase().includes(k.toLowerCase()));
+            if (matchedKey) tips.push(tip_map[matchedKey]);
+        }
+    });
+    // Only add a message if we had gaps but no specific tips
+    if (tips.length === 0 && gaps.length > 0) {
+        tips.push(`Focus on learning ${gaps[0]} to strengthen your profile.`);
+    }
+    if (tips.length === 0) {
+        tips.push('Your detected skills cover the essentials well. Consider deepening expertise in your current stack.');
+    }
     return tips.slice(0, 5);
 }
 

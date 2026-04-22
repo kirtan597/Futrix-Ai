@@ -5,7 +5,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - MONGO_URI=mongodb://mongo:27017/careertwin
+      - MONGO_URI=mongodb://mongo:27017/futrixai
       - AI_SERVICE_URL=http://python:8000/analyze
     depends_on:
       - mongo

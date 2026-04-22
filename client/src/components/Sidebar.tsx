@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
+import FutrixLogo from './FutrixLogo';
 
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
@@ -36,7 +37,9 @@ export default function Sidebar() {
     const location = useLocation();
     const navigate = useNavigate();
     const email = localStorage.getItem('userEmail') || '';
-    const initials = email.slice(0, 2).toUpperCase();
+    const name = localStorage.getItem('userName') || '';
+    const avatar = localStorage.getItem('userAvatar') || '';
+    const initials = (name || email).slice(0, 2).toUpperCase();
 
     const handleLogout = () => {
         localStorage.clear();
@@ -73,21 +76,11 @@ export default function Sidebar() {
                 minHeight: 68,
             }}>
                 {/* Logo mark */}
-                <Box sx={{
-                    width: 34, height: 34, borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #a3a3a3 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: '0 4px 16px rgba(255,255,255,0.12)',
-                }}>
-                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color: '#0a0a0a', letterSpacing: '-0.04em', lineHeight: 1 }}>
-                        CT
-                    </Typography>
-                </Box>
+                <FutrixLogo size={34} />
                 {!collapsed && (
                     <Box>
                         <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '-0.035em', lineHeight: 1 }}>
-                            CareerTwin
+                            Futrix
                         </Typography>
                         <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontWeight: 500, letterSpacing: '0.04em', mt: 0.2 }}>
                             AI Platform
@@ -202,19 +195,22 @@ export default function Sidebar() {
                     border: '1px solid rgba(255,255,255,0.06)',
                     justifyContent: collapsed ? 'center' : 'flex-start',
                 }}>
-                    <Avatar sx={{
-                        width: 28, height: 28, fontSize: '0.72rem', fontWeight: 700,
-                        background: 'rgba(255,255,255,0.12)',
-                        color: '#ffffff',
-                        flexShrink: 0,
-                    }}>
+                    <Avatar 
+                        src={avatar}
+                        sx={{
+                            width: 28, height: 28, fontSize: '0.72rem', fontWeight: 700,
+                            background: 'rgba(255,255,255,0.12)',
+                            color: '#ffffff',
+                            flexShrink: 0,
+                        }}
+                    >
                         {initials}
                     </Avatar>
                     {!collapsed && (
                         <>
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {email}
+                                    {name || email}
                                 </Typography>
                                 <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)' }}>
                                     Free plan

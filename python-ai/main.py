@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from ai_engine import analyze_resume, score_breakdown, career_paths, compare_analyses
 
-app = FastAPI(title="CareerTwin AI Engine", version="2.0.0")
+app = FastAPI(title="Futrix AI Engine", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,7 +29,7 @@ class CareerPathRequest(BaseModel):
 
 @app.get("/")
 def health():
-    return {"status": "CareerTwin AI Engine v2.0 running 🐍", "endpoints": [
+    return {"status": "Futrix AI Engine v2.0 running 🐍", "endpoints": [
         "/analyze", "/score-breakdown", "/career-path", "/compare"
     ]}
 
@@ -37,8 +37,8 @@ def health():
 
 @app.post("/analyze")
 def analyze(data: ResumeData):
-    if not data.resume or len(data.resume.strip()) < 10:
-        raise HTTPException(status_code=400, detail="Resume text is too short.")
+    if not data.resume or len(data.resume.strip()) < 50:
+        raise HTTPException(status_code=400, detail="Resume text is too short. Please provide at least 50 characters.")
     result = analyze_resume(data.resume)
     # Enrich with breakdown & career paths
     result["score_breakdown"] = score_breakdown(result["skills"])

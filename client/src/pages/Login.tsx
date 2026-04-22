@@ -10,6 +10,8 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { GoogleLogin } from '@react-oauth/google';
+import FutrixLogo from '../components/FutrixLogo';
 
 // ─── Feature list ─────────────────────────────────────────────────────────────
 const FEATURES = [
@@ -46,6 +48,32 @@ export default function Login() {
         const t = setTimeout(() => setMounted(true), 60);
         return () => clearTimeout(t);
     }, []);
+
+    const handleGoogleSuccess = async (credentialResponse: any) => {
+        setLoading(true);
+        setError('');
+        try {
+            const response = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential: credentialResponse.credential }),
+            });
+            const data = await response.json();
+            if (response.ok && data.status === 'logged_in') {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('userEmail', data.email);
+                if (data.name) localStorage.setItem('userName', data.name);
+                if (data.avatar) localStorage.setItem('userAvatar', data.avatar);
+                navigate('/dashboard');
+            } else {
+                setError(data.error || 'Google login failed.');
+            }
+        } catch {
+            setError('Cannot connect to server. Make sure Node.js API is running.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,17 +129,10 @@ export default function Login() {
             }}>
                 {/* Logo */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.8, mb: 8 }}>
-                    <Box sx={{
-                        width: 44, height: 44, borderRadius: '13px',
-                        background: '#ffffff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 8px 32px rgba(255,255,255,0.15)',
-                    }}>
-                        <Typography sx={{ fontWeight: 900, fontSize: '1rem', color: '#000', letterSpacing: '-0.05em' }}>CT</Typography>
-                    </Box>
+                    <FutrixLogo size={44} glow />
                     <Box>
                         <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff', letterSpacing: '-0.035em', lineHeight: 1 }}>
-                            CareerTwin AI
+                            Futrix AI
                         </Typography>
                         <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.28)', letterSpacing: '0.04em', mt: 0.2 }}>
                             Powered by NLP · FastAPI
@@ -199,10 +220,8 @@ export default function Login() {
                 <Box sx={{ width: '100%', maxWidth: 380 }}>
                     {/* Mobile logo */}
                     <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5, mb: 6, justifyContent: 'center' }}>
-                        <Box sx={{ width: 38, height: 38, borderRadius: '10px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Typography sx={{ fontWeight: 900, fontSize: '0.88rem', color: '#000' }}>CT</Typography>
-                        </Box>
-                        <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>CareerTwin AI</Typography>
+                        <FutrixLogo size={38} />
+                        <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff' }}>Futrix AI</Typography>
                     </Box>
 
                     {/* Form heading */}
@@ -228,6 +247,26 @@ export default function Login() {
                             borderRadius: '18px 18px 0 0',
                             mx: -3.5, mt: -3.5, mb: 3.5,
                         }} />
+
+                        <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <GoogleLogin
+                                onSuccess={handleGoogleSuccess}
+                                onError={() => setError('Google Login Failed')}
+                                theme="filled_black"
+                                shape="pill"
+                                width="100%"
+                                size="large"
+                                text="continue_with"
+                            />
+                        </Box>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3.5, gap: 2 }}>
+                            <Box sx={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                            <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                OR
+                            </Typography>
+                            <Box sx={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                        </Box>
 
                         <Box component="form" onSubmit={handleLogin} noValidate>
                             <TextField

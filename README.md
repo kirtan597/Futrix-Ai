@@ -2,9 +2,9 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/CareerTwin-AI-000000?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xOC41IDE1LjVjMCwwLTQuNS0yLTcuNS0ycy03LjUsMi03LjUsMnYxLjVoMTV6TTEyLDJDOS4yNCwyLDcsMy4zNiw3LDUuMjNjMCwyLjg5LDIuNjksMi44MSw1LDIuODFzNS4wOS4wOCw1LTIuODFDMTcsMy4zNiwxNC43NiwyLDEyLDJ6Ii8+PC9zdmc+" alt="CareerTwin AI" />
+<img src="https://img.shields.io/badge/Futrix-AI-000000?style=for-the-badge" alt="Futrix AI" />
 
-# CareerTwin AI 
+# Futrix AI 
 ### *Precision Career Intelligence — Powered by a Polyglot Microservices Architecture*
 
 <br/>
@@ -19,7 +19,7 @@
 
 <br/>
 
-> **CareerTwin AI** is a professional career intelligence platform that creates a digital twin of your professional persona. It leverages high-precision NLP to analyze resumes, map skill gaps, and architect personalized career growth strategies.
+> **Futrix AI** is a professional career intelligence platform that analyzes resumes with high-precision text-bounded NLP, maps skill gaps against industry demand, and architects personalized career growth strategies — all from the text you provide.
 
 <br/>
 
@@ -33,13 +33,13 @@
 
 ## 🛡️ Polyglot Engineering
 
-This project is a masterclass in **multi-language microservices integration**, demonstrating how four distinct stacks can collaborate in a high-security, performance-oriented environment.
+A multi-language microservices architecture demonstrating how four distinct technology stacks collaborate in a secure, performance-oriented environment.
 
 | Service       | Stack                          | Core Mission                                   |
 |---------------|--------------------------------|------------------------------------------------|
 | **🛡️ Java Gateway** | Java + Servlets + JJWT         | Distributed security, JWT issuance & validation |
 | **🌐 Node API**    | Node.js + Express + Mongoose   | Business logic orchestrator & data persistence  |
-| **🐍 Python AI**   | FastAPI + spaCy NLP            | NLP extraction, scoring heuristics & roadmap gen |
+| **🐍 Python AI**   | FastAPI + Regex NLP            | Text-bounded skill extraction, scoring & roadmap gen |
 | **⚛️ React Client** | React 18 + TS + Framer Motion  | High-fidelity monochrome SaaS interface        |
 
 <br/>
@@ -48,7 +48,7 @@ This project is a masterclass in **multi-language microservices integration**, d
 
 ## 🏗 System Architecture
 
-CareerTwin AI utilizes a sophisticated request-reply model with a shared security context.
+Futrix AI utilizes a sophisticated request-reply model with a shared security context.
 
 ```mermaid
 graph TD
@@ -65,7 +65,7 @@ graph TD
     NodeAPI -->|Security Verification| Gateway
     NodeAPI -->|Persistence| DB
     NodeAPI -->|Invoke Analysis| PythonAI
-    PythonAI -->|Neural Skill Mapping| NodeAPI
+    PythonAI -->|Skill Mapping| NodeAPI
     NodeAPI -->|Insight Delivery| Client
 ```
 
@@ -76,12 +76,13 @@ graph TD
 ## ✨ Features
 
 - **🖤 Monochrome SaaS Design** — A premium, high-contrast aesthetic utilizing `glassmorphism`, `backdrop-filters`, and a custom-tuned monochrome palette.
-- **📄 Neural Resume Parsing** — Advanced skill extraction using **spaCy's** industry-standard NLP models.
-- **📊 Dimensional Analysis** — Beyond simple counting; we analyze **Stack Balance**, **Cloud Presence**, and **DevOps Readiness**.
-- **🗺️ Strategic Roadmaps** — Personalized, step-by-step learning paths automatically generated to bridge identified gaps.
-- **💼 Market Job Matching** — Real-time matching against a curated database of roles with percentage-based fit analysis.
+- **📄 Text-Bounded Resume Parsing** — Strict skill extraction using regex with word-boundary matching — only skills genuinely present in your text are detected. No hallucination.
+- **📊 Dimensional Analysis** — Beyond simple counting; analyzes **Stack Balance**, **Cloud Presence**, **DevOps Readiness**, and **Language Diversity**.
+- **🗺️ Context-Aware Roadmaps** — Personalized learning paths generated only from your identified skill gaps — no generic filler.
+- **💼 Career Path Matching** — Role-based matching against a curated database with percentage-based fit analysis and salary ranges.
 - **📁 Evolution Tracking** — Full history support and analysis comparison to track your growth over time.
-- **🔐 Hardened Security** — Java-based JWT gateway ensuring enterprise-grade protection across all microservices.
+- **🔐 Google OAuth + JWT Security** — Google Sign-In integration with JWT-based session management across all microservices.
+- **🧠 170+ Skills Database** — Comprehensive detection covering languages, frameworks, cloud, DevOps, AI/ML, testing, and more.
 
 <br/>
 
@@ -89,14 +90,14 @@ graph TD
 
 ## 📊 Intelligence Components
 
-The React client features a suite of custom-engineered data visualization components centered on user growth:
+The React client features a suite of custom-engineered data visualization components:
 
 - **⚪ ScoreRing** — Real-time Career Readiness visualization.
 - **🕸️ SkillRadar** — Multi-dimensional skill distribution plot.
 - **🍩 GapDonut** — Precision visualization of technical debt (missing skills).
 - **📉 ScoreArea** — Growth tracking over historical analysis points.
 - **🔥 SkillHeatmap** — Intensity mapping of existing competencies.
-- **📋 SuggestionPanel** — AI-driven actionable insights and next-steps.
+- **📋 SuggestionPanel** — AI-driven actionable insights derived from your specific gaps.
 
 <br/>
 
@@ -105,17 +106,19 @@ The React client features a suite of custom-engineered data visualization compon
 ## 📂 Project Structure
 
 ```bash
-career-twin-ai/
+futrix-ai/
 ├── 📁 client/             # React 18 frontend built with Vite & TypeScript
 │   ├── 📁 layout/         # High-level architecture (AppShell, AuthLayout)
 │   ├── 📁 pages/          # 12-screen intelligent dashboard ecosystem
-│   ├── 📁 components/     # Visual intelligence & chart components
+│   ├── 📁 components/     # Visual intelligence, charts & FutrixLogo SVG
 │   └── 📁 store/          # Global state (Auth, Analysis, UI)
 ├── 📁 node-api/           # Express backend orchestrator
-│   ├── 📁 routes/         # RESTful endpoints for Analysis & Matchmaking
-│   └── 📁 models/         # Mongoose schemas for persistence
+│   ├── 📁 routes/         # RESTful endpoints for Analysis & Auth
+│   ├── 📁 models/         # Mongoose schemas (User, Analysis)
+│   └── 📁 middleware/     # JWT auth middleware
 ├── 📁 python-ai/          # FastAPI application for NLP logic
-│   └── ai_engine.py       # Scoring algorithms & skill extraction
+│   ├── ai_engine.py       # Text-bounded scoring & skill extraction
+│   └── skills_db.json     # 170+ technology keywords database
 └── 📁 java-gateway/       # Java-based security gateway
     └── src/               # Servlet-based auth & JWT controller
 ```
@@ -126,26 +129,59 @@ career-twin-ai/
 
 ## 🚀 Quick Start
 
-### 1. Unified Launcher (Windows)
-We provide a one-click development launcher:
+### Prerequisites
+- **Node.js** ≥ 18 · **Python** ≥ 3.9 · **Java** ≥ 11 + Maven · **MongoDB** running locally
+
+### 1. Clone & Configure
+```bash
+git clone https://github.com/kirtan597/CareerTwin-AI.git
+cd CareerTwin-AI
+```
+
+### 2. Environment Variables
+```bash
+# node-api/.env
+cp node-api/.env.example node-api/.env
+# Edit with your MongoDB URI and Google OAuth Client ID
+```
+
+### 3. Unified Launcher (Windows)
 ```powershell
 .\run-dev.bat
 ```
 
-### 2. Manual Startup (Cross-Platform)
+### 4. Manual Startup (Cross-Platform)
 ```bash
 # Gateway (Security)
 cd java-gateway && mvn tomcat7:run
 
 # API (Orchestrator)
-cd node-api && npm start
+cd node-api && npm install && node server.js
 
 # AI Engine (Intelligence)
-cd python-ai && uvicorn main:app --reload --port 8000
+cd python-ai && pip install -r requirements.txt && uvicorn main:app --reload --port 8000
 
 # Client (Interface)
-cd client && npm run dev
+cd client && npm install && npm run dev
 ```
+
+### 5. Access
+| Service | URL |
+|---------|-----|
+| Client | http://localhost:5173 |
+| Node API | http://localhost:5000 |
+| Python AI | http://localhost:8000 |
+| Java Gateway | http://localhost:8080 |
+
+<br/>
+
+---
+
+## 🔒 Authentication
+
+Futrix AI supports two authentication methods:
+- **Google OAuth 2.0** — Secure sign-in with Google (requires `GOOGLE_CLIENT_ID` in environment)
+- **Email-based** — Quick access with email (magic-link style, no password required)
 
 <br/>
 
@@ -169,6 +205,6 @@ We welcome professional contributions that enhance the AI models or UI fidelity.
 
 **Architecting the Future of Career Intelligence**
 
-*CareerTwin AI — Data-driven transformation for the modern professional.*
+*Futrix AI — Data-driven transformation for the modern professional.*
 
 </div>

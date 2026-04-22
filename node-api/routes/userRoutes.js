@@ -1,14 +1,18 @@
 const express  = require("express");
 const axios    = require("axios");
 const jwt      = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 const router   = express.Router();
 
 const User     = require("../models/User");
 const Analysis = require("../models/Analysis");
 const auth     = require("../middleware/auth");
 
-const JWT_SECRET  = process.env.JWT_SECRET  || "CareerTwinSuperSecretKey_32chars!!";
+const JWT_SECRET  = process.env.JWT_SECRET  || "FutrixAiSuperSecretKey_32chars!!!";
 const PYTHON_URL  = process.env.PYTHON_URL  || "http://localhost:8000";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // ─── POST /api/login ──────────────────────────────────────────────────────────
 router.post("/login", async (req, res) => {
@@ -32,11 +36,54 @@ router.post("/login", async (req, res) => {
     }
 });
 
+// ─── POST /api/auth/google ────────────────────────────────────────────────────
+router.post("/auth/google", async (req, res) => {
+    const { credential } = req.body;
+    if (!credential) {
+        return res.status(400).json({ error: "Google credential is required." });
+    }
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const { email, sub, name, picture } = payload;
+
+        let user = await User.findOne({ email });
+        if (!user) {
+            user = await User.create({
+                email,
+                name: name || email.split('@')[0],
+                googleId: sub,
+                avatar: picture,
+            });
+        } else if (!user.googleId) {
+            // Update existing user with Google info if not already present
+            user.googleId = sub;
+            user.name = name || user.name;
+            user.avatar = picture || user.avatar;
+            await user.save();
+        }
+
+        const token = jwt.sign(
+            { id: user._id, email: user.email, role: "user" },
+            JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        res.json({ status: "logged_in", token, email: user.email, name: user.name, avatar: user.avatar });
+    } catch (err) {
+        console.error("[google-auth]", err.message);
+        res.status(500).json({ error: "Google authentication failed." });
+    }
+});
+
 // ─── POST /api/upload-resume ──────────────────────────────────────────────────
 router.post("/upload-resume", auth, async (req, res) => {
     const { text, email } = req.body;
-    if (!text || text.trim().length < 10) {
-        return res.status(400).json({ error: "Resume text is too short." });
+    if (!text || text.trim().length < 50) {
+        return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
     }
     try {
         // Call Python AI engine

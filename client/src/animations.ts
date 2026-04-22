@@ -1,5 +1,5 @@
 /**
- * animations.ts — Framer Motion variant library for CareerTwin AI
+ * animations.ts — Framer Motion variant library for Futrix AI
  * All reusable animation variants in one place.
  */
 

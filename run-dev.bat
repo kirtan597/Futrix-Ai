@@ -1,5 +1,5 @@
 @echo off
-echo Starting CareerTwin AI Services...
+echo Starting Futrix AI Services...
 
 start "Java Gateway" /D "java-gateway" cmd /c "mvn tomcat7:run"
 start "Node API" /D "node-api" cmd /c "npm install && node server.js"
