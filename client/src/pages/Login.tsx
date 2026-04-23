@@ -28,6 +28,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [mounted, setMounted] = useState(false);
+    const [debugInfo, setDebugInfo] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -37,27 +38,76 @@ export default function Login() {
     }, []);
 
     const handleGoogleSuccess = async (credentialResponse: any) => {
+        console.log('=== GOOGLE OAUTH DEBUG START ===');
+        console.log('1. Credential Response:', credentialResponse);
+        
         setLoading(true);
         setError('');
+        setDebugInfo('Received Google credential...');
+        
+        if (!credentialResponse?.credential) {
+            console.error('No credential in response');
+            setError('No credential received from Google. Please try again.');
+            setDebugInfo('Error: No credential');
+            setLoading(false);
+            return;
+        }
+        
         try {
+            console.log('2. Sending to backend: /api/auth/google');
+            setDebugInfo('Sending to backend...');
+            
             const response = await fetch('/api/auth/google', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({ credential: credentialResponse.credential }),
             });
+            
+            console.log('3. Backend response status:', response.status);
+            console.log('4. Response headers:', Object.fromEntries(response.headers.entries()));
+            
             const data = await response.json();
-            if (response.ok && data.status === 'logged_in') {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('userEmail', data.email);
-                if (data.name) localStorage.setItem('userName', data.name);
-                if (data.avatar) localStorage.setItem('userAvatar', data.avatar);
-                navigate('/dashboard');
-            } else {
-                setError(data.error || 'Google login failed.');
+            console.log('5. Backend response data:', data);
+            
+            if (!response.ok) {
+                console.error('Backend returned error:', data);
+                setError(`Backend error: ${data.error || data.message || 'Unknown error'}`);
+                setDebugInfo(`Error ${response.status}: ${data.error || data.message}`);
+                setLoading(false);
+                return;
             }
-        } catch {
-            setError('Cannot connect to server. Make sure Node.js API is running.');
-        } finally {
+            
+            if (data.status === 'logged_in' && data.accessToken && data.refreshToken) {
+                console.log('6. Login successful, storing tokens...');
+                setDebugInfo('Login successful! Redirecting...');
+                
+                // Store tokens
+                localStorage.setItem('accessToken', data.accessToken);
+                localStorage.setItem('refreshToken', data.refreshToken);
+                localStorage.setItem('userEmail', data.user.email);
+                if (data.user.name) localStorage.setItem('userName', data.user.name);
+                if (data.user.avatar) localStorage.setItem('userAvatar', data.user.avatar);
+                
+                console.log('7. Tokens stored, navigating to dashboard...');
+                console.log('=== GOOGLE OAUTH DEBUG END ===');
+                
+                // Small delay to ensure storage completes
+                setTimeout(() => {
+                    navigate('/dashboard', { replace: true });
+                }, 100);
+            } else {
+                console.error('Invalid response structure:', data);
+                setError('Invalid response from server. Missing tokens or status.');
+                setDebugInfo('Error: Invalid server response');
+                setLoading(false);
+            }
+        } catch (err: any) {
+            console.error('8. Network/Parse error:', err);
+            setError(`Connection error: ${err.message}. Is the backend running on port 5000?`);
+            setDebugInfo(`Network error: ${err.message}`);
             setLoading(false);
         }
     };
@@ -74,11 +124,14 @@ export default function Login() {
             });
             const data = await response.json();
             if (response.ok && data.status === 'logged_in') {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('userEmail', email);
+                localStorage.setItem('accessToken', data.accessToken);
+                localStorage.setItem('refreshToken', data.refreshToken);
+                localStorage.setItem('userEmail', data.user.email);
+                if (data.user.name) localStorage.setItem('userName', data.user.name);
+                if (data.user.avatar) localStorage.setItem('userAvatar', data.user.avatar);
                 navigate('/dashboard');
             } else {
-                setError(data.error || 'Login failed. Please try again.');
+                setError(data.message || data.error || 'Login failed. Please try again.');
             }
         } catch {
             setError('Cannot connect to server. Make sure Node.js API is running on port 5000.');
@@ -243,7 +296,10 @@ export default function Login() {
                         <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <GoogleLogin
                                 onSuccess={handleGoogleSuccess}
-                                onError={() => setError('Google Login Failed')}
+                                onError={() => {
+                                    console.error('Google OAuth Error');
+                                    setError('Google Login Failed. Please try again or use email login.');
+                                }}
                                 theme="filled_black"
                                 shape="pill"
                                 width="100%"
@@ -277,6 +333,12 @@ export default function Login() {
                             {error && (
                                 <Alert severity="error" sx={{ mb: 2.5, borderRadius: '10px', fontSize: '0.82rem' }}>
                                     {error}
+                                </Alert>
+                            )}
+
+                            {debugInfo && (
+                                <Alert severity="info" sx={{ mb: 2.5, borderRadius: '10px', fontSize: '0.82rem' }}>
+                                    Debug: {debugInfo}
                                 </Alert>
                             )}
 

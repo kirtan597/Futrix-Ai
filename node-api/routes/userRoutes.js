@@ -1,35 +1,59 @@
 const express  = require("express");
 const axios    = require("axios");
-const jwt      = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const router   = express.Router();
 
 const User     = require("../models/User");
 const Analysis = require("../models/Analysis");
 const auth     = require("../middleware/auth");
+const rateLimiter = require("../middleware/rateLimiter");
+const { generateTokens, verifyRefreshToken } = require("../utils/authUtils");
 
-const JWT_SECRET  = process.env.JWT_SECRET  || "FutrixAiSuperSecretKey_32chars!!!";
 const PYTHON_URL  = process.env.PYTHON_URL  || "http://localhost:8000";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // ─── POST /api/login ──────────────────────────────────────────────────────────
-router.post("/login", async (req, res) => {
+router.post("/login", rateLimiter(5, 15 * 60 * 1000), async (req, res) => {
     const { email } = req.body;
     if (!email || !email.includes("@")) {
         return res.status(400).json({ error: "A valid email is required." });
     }
     try {
         let user = await User.findOne({ email });
-        if (!user) user = await User.create({ email });
+        
+        // Check if account is locked
+        if (user && user.isLocked) {
+            return res.status(423).json({ 
+                error: "Account Locked", 
+                message: "Too many failed attempts. Please try again later." 
+            });
+        }
+        
+        if (!user) {
+            user = await User.create({ email });
+        }
 
-        const token = jwt.sign(
-            { id: user._id, email: user.email, role: "user" },
-            JWT_SECRET,
-            { expiresIn: "7d" }
-        );
-        res.json({ status: "logged_in", token });
+        // Generate tokens
+        const { accessToken, refreshToken } = generateTokens(user);
+        
+        // Save refresh token to database
+        user.refreshToken = refreshToken;
+        user.lastLogin = new Date();
+        await user.save();
+
+        res.json({ 
+            status: "logged_in", 
+            accessToken,
+            refreshToken,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar
+            }
+        });
     } catch (err) {
         console.error("[login]", err.message);
         res.status(500).json({ error: "Server error during login." });
@@ -37,45 +61,216 @@ router.post("/login", async (req, res) => {
 });
 
 // ─── POST /api/auth/google ────────────────────────────────────────────────────
-router.post("/auth/google", async (req, res) => {
+router.post("/auth/google", rateLimiter(10, 15 * 60 * 1000), async (req, res) => {
+    console.log('=== BACKEND: Google OAuth Request Received ===');
+    console.log('Request body:', req.body);
+    
     const { credential } = req.body;
     if (!credential) {
+        console.error('No credential in request body');
         return res.status(400).json({ error: "Google credential is required." });
     }
+    
+    console.log('Credential received, length:', credential.length);
+    console.log('GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID);
+    
     try {
+        console.log('Verifying ID token with Google...');
+        // Verify Google ID token
         const ticket = await googleClient.verifyIdToken({
             idToken: credential,
             audience: GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
-        const { email, sub, name, picture } = payload;
+        console.log('Token verified! Payload:', { email: payload.email, sub: payload.sub, email_verified: payload.email_verified });
+        
+        const { email, sub, name, picture, email_verified } = payload;
 
+        // Check if email is verified
+        if (!email_verified) {
+            console.error('Email not verified:', email);
+            return res.status(403).json({ 
+                error: "Email not verified", 
+                message: "Please verify your email with Google first." 
+            });
+        }
+
+        console.log('Finding/creating user for email:', email);
         let user = await User.findOne({ email });
+        
         if (!user) {
+            console.log('Creating new user...');
+            // Create new user
             user = await User.create({
                 email,
                 name: name || email.split('@')[0],
                 googleId: sub,
                 avatar: picture,
+                lastLogin: new Date()
             });
-        } else if (!user.googleId) {
-            // Update existing user with Google info if not already present
-            user.googleId = sub;
+            console.log('New user created:', user._id);
+        } else {
+            console.log('Existing user found:', user._id);
+            // Update existing user with Google info
+            if (!user.googleId) {
+                user.googleId = sub;
+            }
             user.name = name || user.name;
             user.avatar = picture || user.avatar;
+            user.lastLogin = new Date();
+            
+            // Reset login attempts on successful login
+            if (user.loginAttempts > 0) {
+                await user.resetLoginAttempts();
+            }
+            
             await user.save();
+            console.log('User updated');
         }
 
-        const token = jwt.sign(
-            { id: user._id, email: user.email, role: "user" },
-            JWT_SECRET,
-            { expiresIn: "7d" }
-        );
+        console.log('Generating tokens...');
+        // Generate tokens
+        const { accessToken, refreshToken } = generateTokens(user);
+        
+        // Save refresh token to database
+        user.refreshToken = refreshToken;
+        await user.save();
 
-        res.json({ status: "logged_in", token, email: user.email, name: user.name, avatar: user.avatar });
+        console.log('Sending success response');
+        const response = { 
+            status: "logged_in", 
+            accessToken,
+            refreshToken,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar
+            }
+        };
+        console.log('Response:', { ...response, accessToken: 'HIDDEN', refreshToken: 'HIDDEN' });
+        console.log('=== BACKEND: Google OAuth Success ===');
+        
+        res.json(response);
     } catch (err) {
-        console.error("[google-auth]", err.message);
-        res.status(500).json({ error: "Google authentication failed." });
+        console.error("[google-auth] ERROR:", err);
+        console.error("Error stack:", err.stack);
+        
+        if (err.message && err.message.includes("Token used too late")) {
+            return res.status(401).json({ 
+                error: "Token expired", 
+                message: "Google token has expired. Please try again." 
+            });
+        }
+        
+        res.status(500).json({ 
+            error: "Google authentication failed",
+            message: err.message || "Unable to verify Google credentials. Please try again."
+        });
+    }
+});
+
+// ─── POST /api/auth/refresh ───────────────────────────────────────────────────
+router.post("/auth/refresh", async (req, res) => {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+        return res.status(401).json({ 
+            error: "Refresh token required",
+            message: "Please provide a refresh token"
+        });
+    }
+    
+    try {
+        // Verify refresh token
+        const decoded = verifyRefreshToken(refreshToken);
+        
+        // Find user and verify refresh token matches
+        const user = await User.findById(decoded.id);
+        
+        if (!user) {
+            return res.status(404).json({ 
+                error: "User not found",
+                message: "Invalid refresh token"
+            });
+        }
+        
+        if (user.refreshToken !== refreshToken) {
+            return res.status(403).json({ 
+                error: "Invalid refresh token",
+                message: "Token does not match stored token"
+            });
+        }
+        
+        // Generate new tokens
+        const tokens = generateTokens(user);
+        
+        // Update refresh token in database
+        user.refreshToken = tokens.refreshToken;
+        await user.save();
+        
+        res.json({
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken
+        });
+    } catch (err) {
+        console.error("[refresh-token]", err.message);
+        res.status(403).json({ 
+            error: "Invalid refresh token",
+            message: err.message
+        });
+    }
+});
+
+// ─── POST /api/auth/logout ────────────────────────────────────────────────────
+router.post("/auth/logout", auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        
+        if (user) {
+            // Clear refresh token
+            user.refreshToken = null;
+            await user.save();
+        }
+        
+        res.json({ 
+            status: "logged_out",
+            message: "Successfully logged out"
+        });
+    } catch (err) {
+        console.error("[logout]", err.message);
+        res.status(500).json({ error: "Logout failed" });
+    }
+});
+
+// ─── GET /api/auth/verify ─────────────────────────────────────────────────────
+router.get("/auth/verify", auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('-refreshToken -loginAttempts -lockUntil');
+        
+        if (!user) {
+            return res.status(404).json({ 
+                valid: false,
+                error: "User not found" 
+            });
+        }
+        
+        res.json({
+            valid: true,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar,
+                lastLogin: user.lastLogin
+            }
+        });
+    } catch (err) {
+        console.error("[verify-token]", err.message);
+        res.status(500).json({ 
+            valid: false,
+            error: "Token verification failed" 
+        });
     }
 });
 

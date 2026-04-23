@@ -138,12 +138,29 @@ git clone https://github.com/kirtan597/CareerTwin-AI.git
 cd CareerTwin-AI
 ```
 
-### 2. Environment Variables
+### 2. OAuth Setup (Recommended)
+```bash
+# Run the automated setup script
+node setup-oauth.js
+```
+
+This will:
+- Generate secure JWT secrets
+- Create `.env` files for backend and frontend
+- Guide you through Google OAuth configuration
+
+**Or manually configure:**
 ```bash
 # node-api/.env
 cp node-api/.env.example node-api/.env
 # Edit with your MongoDB URI and Google OAuth Client ID
+
+# client/.env
+cp client/.env.example client/.env
+# Add your Google OAuth Client ID
 ```
+
+📖 **Detailed OAuth Setup**: See [QUICKSTART_OAUTH.md](QUICKSTART_OAUTH.md) for step-by-step instructions.
 
 ### 3. Unified Launcher (Windows)
 ```powershell
@@ -177,11 +194,35 @@ cd client && npm install && npm run dev
 
 ---
 
-## 🔒 Authentication
+## 🔒 Authentication & Security
 
-Futrix AI supports two authentication methods:
-- **Google OAuth 2.0** — Secure sign-in with Google (requires `GOOGLE_CLIENT_ID` in environment)
-- **Email-based** — Quick access with email (magic-link style, no password required)
+Futrix AI implements enterprise-grade OAuth 2.0 authentication:
+
+### Features
+- **🔐 Google OAuth 2.0** — Secure sign-in with Google ID token verification
+- **🎫 JWT Access Tokens** — Short-lived (15 min) tokens for API requests
+- **🔄 Automatic Token Refresh** — Seamless token renewal without re-login
+- **🛡️ Rate Limiting** — Protection against brute force attacks
+- **🔒 Account Lockout** — Automatic lockout after failed attempts
+- **📧 Email-based Login** — Quick access with email (no password required)
+
+### Quick Setup
+```bash
+# Generate secure secrets and configure OAuth
+node setup-oauth.js
+```
+
+### Documentation
+- **Quick Start**: [QUICKSTART_OAUTH.md](QUICKSTART_OAUTH.md) — 5-minute setup guide
+- **Full Documentation**: [OAUTH_SECURITY.md](OAUTH_SECURITY.md) — Complete security implementation details
+
+### Google OAuth Setup
+1. Visit [Google Cloud Console](https://console.cloud.google.com/)
+2. Create OAuth 2.0 credentials
+3. Add authorized origins: `http://localhost:5173`
+4. Copy Client ID to `.env` files
+
+See [QUICKSTART_OAUTH.md](QUICKSTART_OAUTH.md) for detailed instructions.
 
 <br/>
 
