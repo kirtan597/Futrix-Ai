@@ -45,7 +45,7 @@ export default function ScoreArea({ currentScore }: ScoreAreaProps) {
                             fontSize: 12,
                             boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
                         }}
-                        formatter={(v: number) => [`${v}%`, 'Score']}
+                        formatter={((v: unknown) => [`${Number(v) || 0}%`, 'Score']) as never}
                     />
                     <Area
                         type="monotone"

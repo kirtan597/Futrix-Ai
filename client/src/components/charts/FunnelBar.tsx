@@ -50,10 +50,10 @@ export default function FunnelBar({ skills, gapSkills }: FunnelBarProps) {
                             fontSize: 12,
                             boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
                         }}
-                        formatter={(v: number, _n: string, props) => [
-                            `${v}% proficiency`,
+                        formatter={((v: unknown, _n: unknown, props: { payload: { type: string } }) => [
+                            `${Number(v) || 0}% proficiency`,
                             props.payload.type === 'have' ? 'Detected' : 'Gap',
-                        ]}
+                        ]) as never}
                     />
                     <Bar dataKey="value" radius={[5, 5, 0, 0]}>
                         {data.map((entry, index) => (

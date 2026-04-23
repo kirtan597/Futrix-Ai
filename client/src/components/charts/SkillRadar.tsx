@@ -43,7 +43,7 @@ export default function SkillRadar({ skills, gapSkills }: SkillRadarProps) {
                             fontSize: 12,
                             boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
                         }}
-                        formatter={(v: number) => [`${v}%`, 'Proficiency']}
+                        formatter={((v: unknown) => [`${Number(v) || 0}%`, 'Proficiency']) as never}
                     />
                     <Radar
                         dataKey="value"

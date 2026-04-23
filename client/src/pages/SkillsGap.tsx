@@ -11,7 +11,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 
 import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
-import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
+
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';

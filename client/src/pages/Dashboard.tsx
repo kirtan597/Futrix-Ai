@@ -13,8 +13,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AutoGraphOutlinedIcon from '@mui/icons-material/AutoGraphOutlined';
 import EastIcon from '@mui/icons-material/East';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
-import NorthOutlinedIcon from '@mui/icons-material/NorthOutlined';
-import SouthOutlinedIcon from '@mui/icons-material/SouthOutlined';
+
 
 import ScoreRing from '../components/ScoreRing';
 import SkillRadar from '../components/charts/SkillRadar';
