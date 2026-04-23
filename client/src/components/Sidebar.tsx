@@ -6,6 +6,7 @@ import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import FutrixLogo from './FutrixLogo';
+import { useAuth } from '../store/useAuth';
 
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
@@ -36,13 +37,23 @@ export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
-    const email = localStorage.getItem('userEmail') || '';
-    const name = localStorage.getItem('userName') || '';
-    const avatar = localStorage.getItem('userAvatar') || '';
+    const { clearAuth, email: authEmail, name: authName, avatar: authAvatar } = useAuth();
+    const email  = authEmail  || localStorage.getItem('userEmail')  || '';
+    const name   = authName   || localStorage.getItem('userName')   || '';
+    const avatar = authAvatar || localStorage.getItem('userAvatar') || '';
     const initials = (name || email).slice(0, 2).toUpperCase();
 
-    const handleLogout = () => {
-        localStorage.clear();
+    const handleLogout = async () => {
+        try {
+            const token = localStorage.getItem('accessToken');
+            if (token) {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+            }
+        } catch { /* ignore network errors on logout */ }
+        clearAuth();
         navigate('/login');
     };
 

@@ -36,22 +36,14 @@ function generateRefreshToken(user) {
  * Verify access token
  */
 function verifyAccessToken(token) {
-    try {
-        return jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-        throw new Error("Invalid or expired access token");
-    }
+    return jwt.verify(token, JWT_SECRET); // let original error (TokenExpiredError etc.) propagate
 }
 
 /**
  * Verify refresh token
  */
 function verifyRefreshToken(token) {
-    try {
-        return jwt.verify(token, JWT_REFRESH_SECRET);
-    } catch (err) {
-        throw new Error("Invalid or expired refresh token");
-    }
+    return jwt.verify(token, JWT_REFRESH_SECRET);
 }
 
 /**
