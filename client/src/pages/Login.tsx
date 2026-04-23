@@ -12,6 +12,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { GoogleLogin } from '@react-oauth/google';
 import FutrixLogo from '../components/FutrixLogo';
+import SpiralAnimation from '../components/SpiralAnimation';
 
 // ─── Feature list ─────────────────────────────────────────────────────────────
 const FEATURES = [
@@ -21,20 +22,6 @@ const FEATURES = [
     { label: 'Personalized Roadmap',     desc: 'Step-by-step action plan tailored to you' },
 ];
 
-// ─── Floating orb component ───────────────────────────────────────────────────
-function FloatOrb({ top, left, size, delay = 0 }: { top: string; left: string; size: number; delay?: number }) {
-    return (
-        <Box sx={{
-            position: 'absolute', top, left,
-            width: size, height: size,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.035) 0%, transparent 70%)',
-            animation: `floatSlow ${5 + delay}s ease-in-out infinite`,
-            animationDelay: `${delay}s`,
-            pointerEvents: 'none',
-        }} />
-    );
-}
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -108,11 +95,16 @@ export default function Login() {
             overflow: 'hidden',
             position: 'relative',
         }}>
-            {/* ── Background ── */}
-            <Box className="line-grid" sx={{ position: 'absolute', inset: 0, zIndex: 0 }} />
-            <FloatOrb top="-10%"  left="-5%"  size={500} delay={0} />
-            <FloatOrb top="60%"   left="70%"  size={400} delay={2} />
-            <FloatOrb top="30%"   left="40%"  size={300} delay={1} />
+            {/* ── Spiral Animation Background ── */}
+            <Box sx={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                <SpiralAnimation />
+            </Box>
+            {/* Dim overlay so text is readable over the animation */}
+            <Box sx={{
+                position: 'absolute', inset: 0, zIndex: 0,
+                background: 'linear-gradient(90deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.7) 100%)',
+                pointerEvents: 'none',
+            }} />
 
             {/* ── Left Panel ── */}
             <Box sx={{
