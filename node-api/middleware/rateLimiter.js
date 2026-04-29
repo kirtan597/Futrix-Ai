@@ -11,7 +11,7 @@ const requestCounts = new Map();
  */
 function rateLimiter(maxRequests = 5, windowMs = 15 * 60 * 1000) {
     return (req, res, next) => {
-        const identifier = req.ip || req.connection.remoteAddress;
+        const identifier = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
         const now = Date.now();
         
         if (!requestCounts.has(identifier)) {

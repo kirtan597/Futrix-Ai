@@ -214,7 +214,10 @@ const theme = createTheme({
         },
         MuiDivider: {
             styleOverrides: {
-                root: { borderColor: 'rgba(255,255,255,0.06)' },
+                root: {
+                    borderColor: 'rgba(255,255,255,0.07)',
+                    backgroundColor: 'transparent', // prevent white fill bleed
+                },
             },
         },
         MuiTooltip: {

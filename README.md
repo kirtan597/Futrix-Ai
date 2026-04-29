@@ -1,251 +1,299 @@
 <div align="center">
 
-<br/>
+<img src="client/public/logo.svg" alt="Futrix AI Logo" width="72" height="72" />
 
-<img src="https://img.shields.io/badge/Futrix-AI-000000?style=for-the-badge" alt="Futrix AI" />
+# Futrix AI
 
-# Futrix AI 
-### *Precision Career Intelligence — Powered by a Polyglot Microservices Architecture*
+**AI-Powered Career Intelligence Platform**
 
-<br/>
+Analyze your resume, surface skill gaps, map your career path — all in a premium monochrome SaaS interface.
 
-[![React](https://img.shields.io/badge/React-18-white?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-white?style=flat-square&logo=typescript&logoColor=black)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-5-white?style=flat-square&logo=vite&logoColor=black)](https://vitejs.dev)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-white?style=flat-square&logo=nodedotjs&logoColor=black)](https://nodejs.org)
-[![Python](https://img.shields.io/badge/Python-FastAPI-white?style=flat-square&logo=python&logoColor=black)](https://fastapi.tiangolo.com)
-[![Java](https://img.shields.io/badge/Java-Servlets-white?style=flat-square&logo=openjdk&logoColor=black)](https://openjdk.org)
-[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-white?style=flat-square&logo=mongodb&logoColor=black)](https://www.mongodb.com)
-
-<br/>
-
-> **Futrix AI** is a professional career intelligence platform that analyzes resumes with high-precision text-bounded NLP, maps skill gaps against industry demand, and architects personalized career growth strategies — all from the text you provide.
-
-<br/>
-
-[🚀 Quick Start](#-quick-start) · [🏗 Architecture](#-architecture) · [📂 Project Structure](#-project-structure) · [✨ Features](#-features) · [📊 Intelligence](#-intelligence-components)
-
-<br/>
-
----
+[![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript)](https://typescriptlang.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)](https://nodejs.org)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7-47a248?style=flat-square&logo=mongodb)](https://mongodb.com)
 
 </div>
 
-## 🛡️ Polyglot Engineering
+---
 
-A multi-language microservices architecture demonstrating how four distinct technology stacks collaborate in a secure, performance-oriented environment.
+## Overview
 
-| Service       | Stack                          | Core Mission                                   |
-|---------------|--------------------------------|------------------------------------------------|
-| **🛡️ Java Gateway** | Java + Servlets + JJWT         | Distributed security, JWT issuance & validation |
-| **🌐 Node API**    | Node.js + Express + Mongoose   | Business logic orchestrator & data persistence  |
-| **🐍 Python AI**   | FastAPI + Regex NLP            | Text-bounded skill extraction, scoring & roadmap gen |
-| **⚛️ React Client** | React 18 + TS + Framer Motion  | High-fidelity monochrome SaaS interface        |
-
-<br/>
+Futrix AI is a full-stack career intelligence platform that parses your resume, extracts skills using an NLP AI engine, scores your readiness for target roles, identifies skill gaps, and generates a personalized roadmap — presented through a premium dark-mode SaaS dashboard.
 
 ---
 
-## 🏗 System Architecture
+## Architecture
 
-Futrix AI utilizes a sophisticated request-reply model with a shared security context.
-
-```mermaid
-graph TD
-    User((👤 User))
-    Client["⚛️ React Client\n(Monochrome UI)"]
-    Gateway["🛡️ Java Gateway\n(Auth Authority)"]
-    NodeAPI["🌐 Node.js API\n(Orchestration Layer)"]
-    PythonAI["🐍 Python AI\n(Intelligence Engine)"]
-    DB[("🍃 MongoDB\n(Document Store)")]
-
-    User -->|Interacts| Client
-    Client -->|Auth Handshake| Gateway
-    Client -->|Submit Resume + JWT| NodeAPI
-    NodeAPI -->|Security Verification| Gateway
-    NodeAPI -->|Persistence| DB
-    NodeAPI -->|Invoke Analysis| PythonAI
-    PythonAI -->|Skill Mapping| NodeAPI
-    NodeAPI -->|Insight Delivery| Client
 ```
-
-<br/>
-
----
-
-## ✨ Features
-
-- **🖤 Monochrome SaaS Design** — A premium, high-contrast aesthetic utilizing `glassmorphism`, `backdrop-filters`, and a custom-tuned monochrome palette.
-- **📄 Text-Bounded Resume Parsing** — Strict skill extraction using regex with word-boundary matching — only skills genuinely present in your text are detected. No hallucination.
-- **📊 Dimensional Analysis** — Beyond simple counting; analyzes **Stack Balance**, **Cloud Presence**, **DevOps Readiness**, and **Language Diversity**.
-- **🗺️ Context-Aware Roadmaps** — Personalized learning paths generated only from your identified skill gaps — no generic filler.
-- **💼 Career Path Matching** — Role-based matching against a curated database with percentage-based fit analysis and salary ranges.
-- **📁 Evolution Tracking** — Full history support and analysis comparison to track your growth over time.
-- **🔐 Google OAuth + JWT Security** — Google Sign-In integration with JWT-based session management across all microservices.
-- **🧠 170+ Skills Database** — Comprehensive detection covering languages, frameworks, cloud, DevOps, AI/ML, testing, and more.
-
-<br/>
-
----
-
-## 📊 Intelligence Components
-
-The React client features a suite of custom-engineered data visualization components:
-
-- **⚪ ScoreRing** — Real-time Career Readiness visualization.
-- **🕸️ SkillRadar** — Multi-dimensional skill distribution plot.
-- **🍩 GapDonut** — Precision visualization of technical debt (missing skills).
-- **📉 ScoreArea** — Growth tracking over historical analysis points.
-- **🔥 SkillHeatmap** — Intensity mapping of existing competencies.
-- **📋 SuggestionPanel** — AI-driven actionable insights derived from your specific gaps.
-
-<br/>
-
----
-
-## 📂 Project Structure
-
-```bash
 futrix-ai/
-├── 📁 client/             # React 18 frontend built with Vite & TypeScript
-│   ├── 📁 layout/         # High-level architecture (AppShell, AuthLayout)
-│   ├── 📁 pages/          # 12-screen intelligent dashboard ecosystem
-│   ├── 📁 components/     # Visual intelligence, charts & FutrixLogo SVG
-│   └── 📁 store/          # Global state (Auth, Analysis, UI)
-├── 📁 node-api/           # Express backend orchestrator
-│   ├── 📁 routes/         # RESTful endpoints for Analysis & Auth
-│   ├── 📁 models/         # Mongoose schemas (User, Analysis)
-│   └── 📁 middleware/     # JWT auth middleware
-├── 📁 python-ai/          # FastAPI application for NLP logic
-│   ├── ai_engine.py       # Text-bounded scoring & skill extraction
-│   └── skills_db.json     # 170+ technology keywords database
-└── 📁 java-gateway/       # Java-based security gateway
-    └── src/               # Servlet-based auth & JWT controller
+├── client/          # React 18 + TypeScript + Vite frontend
+├── node-api/        # Node.js + Express REST API + Auth
+├── python-ai/       # Python FastAPI AI engine (NLP analysis)
+├── java-gateway/    # Java Spring Boot API gateway (optional)
+├── run-dev.bat      # One-command dev launcher (Windows)
+└── docker-compose.yml
 ```
 
-<br/>
+### Service Map
+
+| Service | Tech | Port | Responsibility |
+|---|---|---|---|
+| **Frontend** | React 18 + Vite + MUI | `5173` | UI, routing, state |
+| **Node API** | Node.js + Express + JWT | `5000` | Auth, user data, MongoDB |
+| **Python AI** | FastAPI + uvicorn | `8000` | Resume parsing, scoring, gap analysis |
+| **Java Gateway** | Spring Boot | `8080` | Optional API gateway |
+| **Database** | MongoDB | `27017` | Persistent user data |
 
 ---
 
-## 🚀 Quick Start
+## Features
+
+### AI Analysis Engine
+- **Resume Parsing** — Extracts skills, experience, and role signals from PDF/text uploads
+- **Readiness Scoring** — 0–100 score with grade classification (Excellent / Good / Fair / Developing)
+- **Skill Gap Detection** — Identifies missing skills ranked by career impact
+- **Career Path Mapping** — AI-generated role matches with salary ranges and match percentages
+- **Personalized Roadmap** — Step-by-step learning plan with course recommendations
+
+### Dashboard & Analytics
+- **Score Ring** — Animated SVG circular progress with glow effect
+- **Skill Radar** — Recharts radar chart comparing detected vs gap skills
+- **Donut Chart** — Skills have vs gap visual breakdown
+- **Area Chart** — Score progression over time with reference line
+- **Priority Matrix** — 2×2 Impact vs Effort quadrant scatter for skill gaps
+- **Gap Severity Index** — Animated progress bars ranked by career impact
+
+### UI/UX
+- Premium monochrome SaaS aesthetic (`#0a0a0a` base, white typography)
+- Fully mobile-responsive: bottom nav bar + slide-out drawer on mobile
+- 44px minimum touch targets, iOS safe-area insets, PWA meta tags
+- Smooth entrance animations (`fadeUp`, `opacity` transitions)
+- Glass card components with subtle border glow on hover
+
+### Auth
+- Google OAuth 2.0 via `@react-oauth/google`
+- JWT access tokens stored in `localStorage` under `accessToken`
+- Protected routes with automatic redirect
+- Rate limiting on auth endpoints
+
+---
+
+## Pages
+
+| Route | Page | Description |
+|---|---|---|
+| `/` | Login | Spiral canvas animation + Google OAuth sign-in |
+| `/dashboard` | Dashboard | Score ring, radar, donut, area chart + analysis summary |
+| `/upload` | Upload Resume | Drag-and-drop zone + analyzing overlay |
+| `/result` | AI Analysis | Full parsed result from Python AI engine |
+| `/skills-gap` | Skills Gap | Priority matrix, severity bars, skill distribution chart |
+| `/career-path` | Career Path | SVG flowchart roadmap + role match cards with rings |
+| `/history` | History | Score trajectory chart + visual timeline of past analyses |
+| `/profile` | Profile | User info and session management |
+
+---
+
+## Quick Start
 
 ### Prerequisites
-- **Node.js** ≥ 18 · **Python** ≥ 3.9 · **Java** ≥ 11 + Maven · **MongoDB** running locally
+- Node.js 18+
+- Python 3.10+
+- MongoDB (running locally)
+- Google OAuth Client ID
 
-### 1. Clone & Configure
+### 1. Clone & Install
+
 ```bash
 git clone https://github.com/kirtan597/CareerTwin-AI.git
-cd CareerTwin-AI
+cd career-twin-ai
+
+# Install frontend deps
+cd client && npm install && cd ..
+
+# Install Node API deps
+cd node-api && npm install && cd ..
+
+# Install Python AI deps
+cd python-ai && pip install -r requirements.txt && cd ..
 ```
 
-### 2. OAuth Setup (Recommended)
-```bash
-# Run the automated setup script
-node setup-oauth.js
+### 2. Environment Variables
+
+**`node-api/.env`**
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/futrixai
+JWT_SECRET=your_64_char_secret_here
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+FRONTEND_URL=http://localhost:5173
 ```
 
-This will:
-- Generate secure JWT secrets
-- Create `.env` files for backend and frontend
-- Guide you through Google OAuth configuration
-
-**Or manually configure:**
-```bash
-# node-api/.env
-cp node-api/.env.example node-api/.env
-# Edit with your MongoDB URI and Google OAuth Client ID
-
-# client/.env
-cp client/.env.example client/.env
-# Add your Google OAuth Client ID
+**`client/.env`**
+```env
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_API_URL=http://localhost:5000
 ```
 
-📖 **Detailed OAuth Setup**: See [QUICKSTART_OAUTH.md](QUICKSTART_OAUTH.md) for step-by-step instructions.
+### 3. Start Development (Windows)
 
-### 3. Unified Launcher (Windows)
-```powershell
+```bat
 .\run-dev.bat
 ```
 
-### 4. Manual Startup (Cross-Platform)
-```bash
-# Gateway (Security)
-cd java-gateway && mvn tomcat7:run
+This starts all 4 services in order: MongoDB → Python AI → Node API → Frontend.
 
-# API (Orchestrator)
-cd node-api && npm install && node server.js
-
-# AI Engine (Intelligence)
-cd python-ai && pip install -r requirements.txt && uvicorn main:app --reload --port 8000
-
-# Client (Interface)
-cd client && npm install && npm run dev
-```
-
-### 5. Access
 | Service | URL |
-|---------|-----|
-| Client | http://localhost:5173 |
+|---|---|
+| Frontend | http://localhost:5173 |
 | Node API | http://localhost:5000 |
 | Python AI | http://localhost:8000 |
-| Java Gateway | http://localhost:8080 |
 
-<br/>
+### 4. Manual Start (any OS)
 
----
-
-## 🔒 Authentication & Security
-
-Futrix AI implements enterprise-grade OAuth 2.0 authentication:
-
-### Features
-- **🔐 Google OAuth 2.0** — Secure sign-in with Google ID token verification
-- **🎫 JWT Access Tokens** — Short-lived (15 min) tokens for API requests
-- **🔄 Automatic Token Refresh** — Seamless token renewal without re-login
-- **🛡️ Rate Limiting** — Protection against brute force attacks
-- **🔒 Account Lockout** — Automatic lockout after failed attempts
-- **📧 Email-based Login** — Quick access with email (no password required)
-
-### Quick Setup
 ```bash
-# Generate secure secrets and configure OAuth
-node setup-oauth.js
+# Terminal 1 — Python AI
+cd python-ai
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 2 — Node API
+cd node-api
+npm start
+
+# Terminal 3 — Frontend
+cd client
+npm run dev
 ```
 
-### Documentation
-- **Quick Start**: [QUICKSTART_OAUTH.md](QUICKSTART_OAUTH.md) — 5-minute setup guide
-- **Full Documentation**: [OAUTH_SECURITY.md](OAUTH_SECURITY.md) — Complete security implementation details
+---
 
-### Google OAuth Setup
-1. Visit [Google Cloud Console](https://console.cloud.google.com/)
-2. Create OAuth 2.0 credentials
-3. Add authorized origins: `http://localhost:5173`
-4. Copy Client ID to `.env` files
+## API Reference
 
-See [QUICKSTART_OAUTH.md](QUICKSTART_OAUTH.md) for detailed instructions.
+### Python AI Engine — `http://localhost:8000`
 
-<br/>
+| Endpoint | Method | Description |
+|---|---|---|
+| `/` | GET | Health check |
+| `/analyze` | POST | Analyze resume → score, skills, gaps, roadmap, career paths |
+| `/score-breakdown` | POST | Detailed scoring breakdown |
+| `/career-path` | POST | Role match analysis |
+| `/compare` | POST | Compare two resumes |
+
+**`POST /analyze` — Request**
+```json
+{ "resume_text": "your full resume text here..." }
+```
+
+**`POST /analyze` — Response**
+```json
+{
+  "readiness_score": 84,
+  "skills": ["React", "TypeScript", "Node.js", "..."],
+  "gap_skills": ["Kubernetes", "AWS"],
+  "roadmap": ["Learn Docker basics", "..."],
+  "career_paths": [
+    {
+      "role": "Full Stack Developer",
+      "match_percent": 82,
+      "salary_range": "$90k–$145k",
+      "skills_needed": ["React", "Node.js", "..."],
+      "matched_skills": ["React", "Node.js"],
+      "missing_skills": ["Docker"]
+    }
+  ]
+}
+```
+
+### Node API — `http://localhost:5000`
+
+| Endpoint | Method | Auth | Description |
+|---|---|---|---|
+| `GET /health` | GET | — | Server health |
+| `POST /api/auth/google` | POST | — | Google OAuth → JWT |
+| `GET /api/auth/verify` | GET | Bearer | Verify JWT |
+| `GET /api/user/profile` | GET | Bearer | Get user profile |
+| `POST /api/resume/upload` | POST | Bearer | Upload resume |
 
 ---
 
-## 🤝 Contributing
+## Tech Stack
 
-We welcome professional contributions that enhance the AI models or UI fidelity.
+### Frontend
+- **React 18** + **TypeScript** + **Vite**
+- **MUI v5** — Component library with custom dark theme
+- **Recharts** — Area, Radar, Bar, Donut charts
+- **Zustand** — Global state management
+- **React Router v6** — Client-side routing
+- **`@react-oauth/google`** — Google OAuth integration
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Backend
+- **Node.js** + **Express** — REST API + JWT auth
+- **FastAPI** + **uvicorn** — Python AI engine
+- **MongoDB** + **Mongoose** — Database
+- **bcrypt** + **jsonwebtoken** — Auth security
+- **express-rate-limit** — Rate limiting
 
-<br/>
+---
+
+## Project Highlights
+
+### Recent Upgrades (v2.0)
+- ✅ **Full mobile responsiveness** — Bottom nav bar, hamburger drawer, touch targets
+- ✅ **Premium visual overhaul** — Priority matrix, SVG flowchart roadmap, animated severity bars
+- ✅ **Python AI engine integrated** — `run-dev.bat` now starts all 4 services including FastAPI
+- ✅ **History timeline** — Score progression area chart + delta badges + mini score rings
+- ✅ **Career Path SVG flowchart** — Step nodes with glow, dashed connectors, role match rings
+- ✅ **Skills Gap intelligence** — 2×2 impact/effort matrix, severity index bars, distribution chart
+- ✅ **Bug fixes** — Rules of Hooks, `accessToken` key alignment, white smoky Recharts overlays
+
+---
+
+## Deployment
+
+### Frontend (Netlify)
+
+`netlify.toml` is configured at the repo root:
+
+```toml
+[build]
+  base    = "client"
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
+```
+
+> **Note:** Set `VITE_GOOGLE_CLIENT_ID` and `VITE_API_URL` as environment variables in Netlify dashboard.
+
+### Python AI (Render / Railway)
+
+```bash
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+### Node API (Railway / Heroku)
+
+```bash
+npm install
+npm start
+```
+
+---
+
+## License
+
+MIT — free to use, fork, and build upon.
 
 ---
 
 <div align="center">
 
-**Architecting the Future of Career Intelligence**
-
-*Futrix AI — Data-driven transformation for the modern professional.*
+Built with precision by **Kirtann** · Futrix AI v2.0 · 2026
 
 </div>

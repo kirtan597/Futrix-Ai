@@ -194,23 +194,23 @@ export default function Dashboard() {
             <Box sx={{
                 display: 'flex', alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                mb: 5, flexWrap: 'wrap', gap: 2,
+                mb: { xs: 3, md: 5 }, flexWrap: 'wrap', gap: 2,
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(-12px)',
                 transition: 'opacity 0.5s, transform 0.5s',
             }}>
-                <Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase', mb: 0.8 }}>
                         Career Intelligence Report
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1.1, fontSize: { xs: '1.6rem', md: '2.125rem' } }}>
                         Your Dashboard
                     </Typography>
                     <Typography sx={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.85rem', mt: 0.8 }}>
                         AI-powered analysis · Last updated just now
                     </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', gap: 1.5, flexShrink: 0 }}>
                     <Button
                         variant="outlined"
                         size="small"
@@ -267,28 +267,52 @@ export default function Dashboard() {
             </Box>
 
             {/* ── ROW 2: Score ring + Score area + Donut ── */}
+            {/* Mobile: score ring & donut side by side, area below. Desktop: 3-col */}
             <Box sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '240px 1fr 240px' },
+                gridTemplateColumns: { xs: '1fr 1fr', md: '240px 1fr 240px' },
+                gridTemplateRows: { xs: 'auto auto', md: 'auto' },
                 gap: 2.5, mb: 2.5,
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(14px)',
                 transition: 'opacity 0.5s 0.14s, transform 0.5s 0.14s',
             }}>
                 {/* Score ring card */}
-                <GlassCard sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: 2.5 }}>
+                <GlassCard sx={{ p: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: { xs: 1.5, md: 2.5 } }}>
                         Readiness
                     </Typography>
-                    <ScoreRing score={data.readiness_score} size={150} animated />
-                    <Divider sx={{ width: '70%', my: 2.5 }} />
-                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 1.7 }}>
-                        Based on {data.skills.length} skills detected
+                    <ScoreRing score={data.readiness_score} size={130} animated />
+                    <Divider sx={{ width: '70%', my: { xs: 1.5, md: 2.5 } }} />
+                    <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 1.7 }}>
+                        {data.skills.length} skills detected
                     </Typography>
                 </GlassCard>
 
-                {/* Score area */}
-                <GlassCard sx={{ p: 3 }}>
+                {/* Gap donut — shown 2nd on mobile (right of score ring) */}
+                <GlassCard sx={{
+                    p: { xs: 2, md: 3 },
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    order: { xs: 2, md: 3 },
+                }}>
+                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: 1 }}>
+                        Coverage
+                    </Typography>
+                    <GapDonut skillsCount={data.skills.length} gapCount={data.gap_skills.length} />
+                    <Typography sx={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', lineHeight: 1, mt: -1 }}>
+                        {coveragePct}%
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.25)', mt: 0.5, textAlign: 'center' }}>
+                        Skill coverage
+                    </Typography>
+                </GlassCard>
+
+                {/* Score area — full width on mobile */}
+                <GlassCard sx={{
+                    p: { xs: 2, md: 3 },
+                    gridColumn: { xs: '1 / -1', md: 'auto' },
+                    order: { xs: 3, md: 2 },
+                }}>
                     <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', mb: 0.5 }}>
                         Score Progression
                     </Typography>
@@ -296,20 +320,6 @@ export default function Dashboard() {
                         Estimated growth over the last 6 months
                     </Typography>
                     <ScoreArea currentScore={data.readiness_score} />
-                </GlassCard>
-
-                {/* Gap donut */}
-                <GlassCard sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: 1 }}>
-                        Coverage
-                    </Typography>
-                    <GapDonut skillsCount={data.skills.length} gapCount={data.gap_skills.length} />
-                    <Typography sx={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', lineHeight: 1, mt: -1 }}>
-                        {coveragePct}%
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', mt: 0.5 }}>
-                        Skill coverage ratio
-                    </Typography>
                 </GlassCard>
             </Box>
 

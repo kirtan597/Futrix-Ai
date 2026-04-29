@@ -11,6 +11,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import FutrixLogo from '../components/FutrixLogo';
 import SpiralAnimation from '../components/SpiralAnimation';
 import { useAuth } from '../store/useAuth';
+import apiService from '../services/apiService';
 
 const FEATURES = [
     { label: 'AI Skill Extraction',  desc: 'Detects 40+ technologies from your resume' },
@@ -42,16 +43,13 @@ export default function Login() {
         setLoading(true);
         setError('');
         try {
-            const res = await fetch('/api/auth/google', {
+            const data = await apiService.publicRequest('/api/auth/google', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ credential: credentialResponse.credential }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Google login failed');
             storeAuthData(data);
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message || 'Google login failed');
             setLoading(false);
         }
     };
@@ -61,16 +59,13 @@ export default function Login() {
         setLoading(true);
         setError('');
         try {
-            const res = await fetch('/api/login', {
+            const data = await apiService.publicRequest('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Login failed');
             storeAuthData(data);
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message || 'Login failed');
             setLoading(false);
         }
     };

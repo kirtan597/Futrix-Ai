@@ -1,9 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline, useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 
 import theme from './theme';
 import Sidebar from './components/Sidebar';
+import { useAuth } from './store/useAuth';
 
 import Login        from './pages/Login';
 import UploadResume from './pages/UploadResume';
@@ -14,22 +16,10 @@ import CareerPath   from './pages/CareerPath';
 import History      from './pages/History';
 import Profile      from './pages/Profile';
 
-// ─── Token validity check (checks expiry without a library) ──────────────────
-function isTokenValid(): boolean {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return false;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.exp * 1000 > Date.now();
-    } catch {
-        return false;
-    }
-}
-
 // ─── Route Guard ─────────────────────────────────────────────────────────────
 function ProtectedRoute({ children }: { children: JSX.Element }) {
-    if (!isTokenValid()) {
-        localStorage.removeItem('accessToken');
+    const { isAuthenticated } = useAuth();
+    if (!isAuthenticated()) {
         return <Navigate to="/login" replace />;
     }
     return children;
@@ -37,18 +27,36 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 
 // ─── Redirect logged-in users away from /login ───────────────────────────────
 function GuestRoute({ children }: { children: JSX.Element }) {
-    if (isTokenValid()) return <Navigate to="/dashboard" replace />;
+    const { isAuthenticated } = useAuth();
+    if (isAuthenticated()) {
+        return <Navigate to="/dashboard" replace />;
+    }
     return children;
 }
 
 // ─── App Shell ────────────────────────────────────────────────────────────────
 function AppShell({ children }: { children: React.ReactNode }) {
     const location = useLocation();
+    const muiTheme = useTheme();
+    const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+
     if (location.pathname === '/login') return <>{children}</>;
+
     return (
         <Box sx={{ display: 'flex', minHeight: '100vh', background: '#0a0a0a' }}>
             <Sidebar />
-            <Box component="main" sx={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+            <Box
+                component="main"
+                sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    // On mobile: push content below top bar (56px) and above bottom nav (64px)
+                    pt: isMobile ? '56px' : 0,
+                    pb: isMobile ? '72px' : 0,
+                }}
+            >
                 {children}
             </Box>
         </Box>

@@ -58,14 +58,16 @@ function Panel({ children, sx = {} }: { children: React.ReactNode; sx?: object }
 
 // ─── Analysis loading overlay ─────────────────────────────────────────────────
 function AnalyzingOverlay({ visible }: { visible: boolean }) {
-    if (!visible) return null;
     const steps = ['Parsing resume...', 'Extracting skills...', 'Detecting gaps...', 'Scoring readiness...', 'Building roadmap...'];
+    // Hooks MUST be called before any early return (Rules of Hooks)
     const [step, setStep] = React.useState(0);
     React.useEffect(() => {
         if (!visible) return;
         const t = setInterval(() => setStep(prev => Math.min(prev + 1, steps.length - 1)), 900);
         return () => clearInterval(t);
     }, [visible]);
+
+    if (!visible) return null;
 
     return (
         <Box sx={{
@@ -136,7 +138,7 @@ export default function UploadResume() {
         setLoading(true);
         setError('');
         const email = localStorage.getItem('userEmail') || '';
-        const token = localStorage.getItem('token') || '';
+        const token = localStorage.getItem('accessToken') || '';
         try {
             const response = await fetch('/api/upload-resume', {
                 method: 'POST',
