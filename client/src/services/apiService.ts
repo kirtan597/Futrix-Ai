@@ -1,9 +1,13 @@
 import { useAuth } from '../store/useAuth';
 
-// Use Vite proxy in development, direct URL in production
-const API_BASE_URL = import.meta.env.DEV 
-    ? '' // Use Vite proxy in development
-    : import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Use Vite proxy in development, deployed API URL in production
+const API_BASE_URL = import.meta.env.DEV
+    ? ''  // Vite proxy handles /api → localhost:5000
+    : import.meta.env.VITE_API_URL || '';
+
+if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+    console.error('[Futrix AI] VITE_API_URL is not set. API calls will fail in production.');
+}
 
 class ApiService {
     private static instance: ApiService;

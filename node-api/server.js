@@ -5,17 +5,25 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const app = express();
 
-// CORS configuration for OAuth and development
+// CORS — allow localhost dev + any deployed frontend URL
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://futrix-ai.netlify.app',           // Netlify production
+    process.env.FRONTEND_URL,                   // override via env
+].filter(Boolean);
+
 const corsOptions = {
-    origin: [
-        process.env.FRONTEND_URL || 'http://localhost:5173',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173'
-    ],
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
 app.use(express.json({ limit: '10mb' }));
