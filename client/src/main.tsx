@@ -4,7 +4,10 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App.tsx'
 import './index.css'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "424357134168-gtnpk168sp23oopec177581sb62vs6o0.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+if (!GOOGLE_CLIENT_ID) {
+  console.error('[Futrix AI] VITE_GOOGLE_CLIENT_ID is not set. Google OAuth will not work.');
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
