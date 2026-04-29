@@ -219,7 +219,7 @@ export default function SkillsGap() {
                                 <Tooltip
                                     cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                                     contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#fff', fontSize: 12 }}
-                                    formatter={(v: unknown) => [v, 'Skills']}
+                                    formatter={(v: unknown) => [String(v ?? ''), 'Skills'] as [string, string]}
                                 />
                                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                                     {barData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
