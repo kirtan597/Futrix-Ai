@@ -9,8 +9,7 @@ const app = express();
 const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'https://futrix-ai.netlify.app',           // Netlify production
-    process.env.FRONTEND_URL,                   // override via env
+    process.env.FRONTEND_URL,                   // Vercel production URL
 ].filter(Boolean);
 
 const corsOptions = {
