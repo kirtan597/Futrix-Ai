@@ -2,13 +2,23 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+import os
 from ai_engine import analyze_resume, score_breakdown, career_paths, compare_analyses
 
 app = FastAPI(title="Futrix AI Engine", version="2.0.0")
 
+# Read extra production origins from env (comma-separated)
+_extra = os.getenv("ALLOWED_ORIGINS", "")
+_prod_origins = [o.strip() for o in _extra.split(",") if o.strip()]
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:5000",
+] + _prod_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5000"],
+    allow_origins=allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,8 +1,19 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
+// In dev, Vite's proxy rewrites /api → localhost:5000, so we can use '' as base.
+// In production (Vercel static hosting), there is NO proxy, so we MUST use the
+// full deployed Node API URL stored in VITE_API_URL.
+const API_BASE = import.meta.env.DEV
+    ? ''                                          // dev: Vite proxy handles /api/*
+    : (import.meta.env.VITE_API_URL || '');       // prod: e.g. https://your-api.railway.app
+
+if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+    console.error('[Futrix AI] VITE_API_URL is not set. All API calls will fail in production!');
+}
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api',
+    baseURL: API_BASE,
     timeout: 30_000,
     headers: { 'Content-Type': 'application/json' },
 });
@@ -76,8 +87,8 @@ api.interceptors.response.use(
                 }
 
                 try {
-                    // Attempt to refresh the token
-                    const response = await axios.post('/api/auth/refresh', {
+                    // Attempt to refresh the token (use the configured api instance to get correct baseURL)
+                    const response = await axios.post(`${API_BASE}/api/auth/refresh`, {
                         refreshToken
                     });
 
