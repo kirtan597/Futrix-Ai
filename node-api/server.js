@@ -92,9 +92,15 @@ app.use((err, req, res, next) => {
     });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Node API running on port ${PORT}`);
-    console.log(`   Health check: http://localhost:${PORT}/health`);
-    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// Export for Vercel serverless
+module.exports = app;
+
+// Local development server
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+        console.log(`🚀 Node API running on port ${PORT}`);
+        console.log(`   Health check: http://localhost:${PORT}/health`);
+        console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+}
