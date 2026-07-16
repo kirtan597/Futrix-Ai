@@ -1,0 +1,43 @@
+services:
+  # ─── Node.js API ──────────────────────────────────────────────────────────
+  - type: web
+    name: futrix-node-api
+    runtime: node
+    rootDir: node-api
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false          # Set in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure value
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false          # Set in Render dashboard
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: PYTHON_URL
+        fromService:
+          name: futrix-python-ai
+          type: web
+          property: host
+      - key: FRONTEND_URL
+        sync: false          # Set to your Netlify URL in Render dashboard
+
+  # ─── Python AI Engine ─────────────────────────────────────────────────────
+  - type: web
+    name: futrix-python-ai
+    runtime: python
+    rootDir: python-ai
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000

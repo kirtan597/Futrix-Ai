@@ -10,6 +10,7 @@ pnpm-debug.log*
 dist/
 dist-ssr/
 build/
+out/
 
 # ─── TypeScript build info ──────────────────────────
 *.tsbuildinfo
@@ -38,7 +39,6 @@ target/
 .env
 .env.local
 .env.*.local
-# (keep .env.example files — they are safe templates)
 !.env.example
 
 # ─── Editor & OS ────────────────────────────────────
@@ -57,11 +57,9 @@ Thumbs.db
 logs/
 *.log
 
-# ─── Docker ─────────────────────────────────────────
-.dockerignore
-
-# ─── Uploads ────────────────────────────────────────
+# ─── Uploads (user files) ───────────────────────────
 uploads/
 
-# ─── Generated Context ──────────────────────────────
+# ─── Misc generated ─────────────────────────────────
 project_full_context.txt
+auto

@@ -153,9 +153,11 @@ export default function UploadResume() {
                 localStorage.clear();
                 navigate('/login');
             } else {
+                localStorage.removeItem('analysisResult');
                 setError(data.error || 'Analysis failed. Please try again.');
             }
         } catch {
+            localStorage.removeItem('analysisResult');
             setError('Cannot connect to Node.js API on port 5000. Is it running?');
         } finally {
             setLoading(false);

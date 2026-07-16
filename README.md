@@ -1,653 +1,607 @@
-<div align="center">
+# Futrix AI — Career Twin
 
-<br />
-
-<img src="client/public/logo.svg" alt="Futrix AI" width="80" />
-
-<br /><br />
-
-# FUTRIX AI
-
-### *Your Resume. Decoded by AI. Mapped to Your Future.*
-
-<br />
-
-[![React](https://img.shields.io/badge/React%2018-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
-[![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://mongodb.com)
-[![MUI](https://img.shields.io/badge/MUI%20v5-007FFF?style=for-the-badge&logo=mui&logoColor=white)](https://mui.com)
-
-<br />
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-white?style=flat-square)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](https://github.com/kirtan597/Futrix-Ai/pulls)
-[![Made with ❤️](https://img.shields.io/badge/Made%20with-❤️-red?style=flat-square)](https://github.com/kirtan597/Futrix-Ai)
-
-<br />
-
-> **90% of job seekers get rejected not because they lack skills — but because they don't know which skills matter.**
->
-> Futrix AI changes that.
-
-<br />
-
-</div>
+> **AI-powered resume analysis platform that solves the real-world skill mismatch problem.**  
+> Upload your resume → get an instant readiness score, detected skills, prioritized skill gaps, and a personalized career roadmap — all derived strictly from your resume text with zero hallucination.
 
 ---
 
-## 🎯 The Problem We're Solving
+## Live Demo
 
-The modern job market is broken for candidates:
+| Service | URL |
+|---|---|
+| Frontend (Vercel) | https://futrix-ai.vercel.app |
+| Node.js API | https://futrix-node-api.onrender.com |
+| Python AI Engine | https://futrix-python-ai.onrender.com |
 
-- 📄 **Blind resume writing** — People craft resumes without knowing what ATS systems and hiring managers actually look for
-- 🕳️ **Hidden skill gaps** — Candidates don't know *which specific skills* are holding them back from their target role
-- 🗺️ **No personalized roadmap** — Generic career advice ignores your actual starting point and target destination
-- 📊 **Zero feedback loop** — After rejection, candidates have no way to measure progress or know what to improve
-
-**Futrix AI is the career intelligence layer that sits between you and your next role** — parsing your resume with NLP, scoring your readiness, surfacing exact gaps, and building a step-by-step learning roadmap tailored specifically to you.
-
----
-
-## 🏗️ System Architecture
-
-```mermaid
-graph TB
-    User((👤 User))
-
-    subgraph Frontend ["🖥️ React Frontend · Port 5173"]
-        Login["🔐 Login\nGoogle OAuth"]
-        Upload["📄 Upload Resume\nDrag & Drop"]
-        Dashboard["📊 Dashboard\nScore + Charts"]
-        SkillsGap["🕳️ Skills Gap\nPriority Matrix"]
-        CareerPath["🗺️ Career Path\nSVG Flowchart"]
-        History["📈 History\nTimeline + Chart"]
-    end
-
-    subgraph NodeAPI ["⚙️ Node.js API · Port 5000"]
-        Auth["🔑 Auth\nJWT + Google OAuth"]
-        UserRoutes["👤 User Routes\nProfile + History"]
-        ResumeRoutes["📋 Resume Routes\nUpload Handler"]
-        RateLimit["🛡️ Rate Limiter\nProtection"]
-    end
-
-    subgraph PythonAI ["🐍 Python AI Engine · Port 8000"]
-        Parser["📝 Resume Parser\nText Extraction"]
-        NLP["🧠 NLP Analyzer\nSkill Detection"]
-        Scorer["📊 Readiness Scorer\n0–100 Score"]
-        GapEngine["🔍 Gap Engine\nMissing Skills"]
-        Roadmap["🗺️ Roadmap Generator\nLearning Path"]
-        CareerMatcher["💼 Career Matcher\nRole Matching"]
-    end
-
-    subgraph Database ["🗄️ MongoDB · Port 27017"]
-        Users[("👥 Users")]
-        Analyses[("📊 Analyses")]
-        Sessions[("🔐 Sessions")]
-    end
-
-    User -->|"Google Sign-In"| Login
-    Login -->|"OAuth Token"| Auth
-    Auth -->|"JWT"| Frontend
-    Upload -->|"Resume Text + Bearer"| ResumeRoutes
-    ResumeRoutes -->|"Proxy to AI"| Parser
-    Parser --> NLP
-    NLP --> Scorer
-    NLP --> GapEngine
-    GapEngine --> Roadmap
-    Scorer --> CareerMatcher
-    CareerMatcher -->|"JSON Response"| Dashboard
-    Auth --> Users
-    ResumeRoutes --> Analyses
-    Dashboard --> SkillsGap
-    Dashboard --> CareerPath
-    Dashboard --> History
-```
+> **Demo credentials:** Use any valid email address or sign in with Google OAuth.
 
 ---
 
-## 🔄 Data Flow — Resume to Insights
+## The Real-World Problem This Solves
 
-```mermaid
-sequenceDiagram
-    actor User
-    participant FE as React Frontend
-    participant API as Node.js API
-    participant AI as Python FastAPI
-    participant DB as MongoDB
+**The Skill Mismatch Crisis:**  
+Millions of job seekers are rejected not because they lack talent, but because they cannot clearly articulate their skills or identify what is missing for their target role. Recruiters spend an average of 6 seconds on a resume. Candidates have no objective way to measure their career readiness or know exactly what to learn next.
 
-    User->>FE: Google OAuth Sign-In
-    FE->>API: POST /api/auth/google (credential)
-    API->>API: Verify Google token + Issue JWT
-    API-->>FE: { accessToken, user }
-
-    User->>FE: Upload Resume (PDF/Text)
-    FE->>API: POST /api/resume/upload (Bearer JWT)
-    API->>API: Validate token + rate limit
-    API->>AI: POST /analyze (resume_text)
-
-    AI->>AI: Extract skills via NLP
-    AI->>AI: Score readiness (0–100)
-    AI->>AI: Detect skill gaps
-    AI->>AI: Generate roadmap
-    AI->>AI: Match career roles
-
-    AI-->>API: { score, skills, gaps, roadmap, career_paths }
-    API->>DB: Save analysis result
-    API-->>FE: Full analysis JSON
-
-    FE->>FE: Store in localStorage
-    FE-->>User: Dashboard · Skills Gap · Career Path · History
-```
+**How Futrix AI Solves It:**
+1. **Objective Skill Extraction** — AI scans resume text and detects 160+ technologies with zero false positives using word-boundary regex matching.
+2. **Context-Aware Gap Analysis** — Gaps are only suggested within the candidate's actual domain (frontend, backend, DevOps, ML) — never generic filler.
+3. **Quantified Readiness Score** — A 0–100 score calculated purely from detected skills and gap count, giving candidates a measurable baseline.
+4. **Prioritized Learning Roadmap** — Each gap is ranked by career impact vs learning effort, with specific course recommendations.
+5. **Role Match Intelligence** — Detected skills are matched against 7 industry roles with salary ranges and match percentages.
 
 ---
 
-## ✨ Feature Showcase
+## Architecture Overview
 
-### 📊 Intelligence Dashboard
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FUTRIX AI PLATFORM                        │
+│                                                             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
+│  │   React/TS   │───▶│  Node.js API │───▶│  Python AI   │  │
+│  │   Frontend   │    │  Express 5   │    │  FastAPI     │  │
+│  │  (Vite/MUI)  │◀───│  JWT Auth    │◀───│  NLP Engine  │  │
+│  └──────────────┘    └──────┬───────┘    └──────────────┘  │
+│                             │                               │
+│                      ┌──────▼───────┐                       │
+│                      │   MongoDB    │                       │
+│                      │   Atlas      │                       │
+│                      └──────────────┘                       │
+└─────────────────────────────────────────────────────────────┘
+```
 
-<table>
-<tr>
-<td width="50%">
-
-**Score Ring**
-- Animated SVG circular progress
-- Grade: Excellent / Good / Fair / Developing
-- Glow filter for premium feel
-
-</td>
-<td width="50%">
-
-**Skill Radar Chart**
-- Detected skills vs gap skills overlay
-- Recharts RadarChart with polygon grid
-- Proficiency scoring per skill
-
-</td>
-</tr>
-<tr>
-<td>
-
-**Gap Donut Chart**
-- Skills you have vs gaps visual split
-- Recharts PieChart with custom label
-- Instant readability at a glance
-
-</td>
-<td>
-
-**Score Area Chart**
-- Career progress over time
-- Recharts AreaChart with gradient fill
-- Reference line at target score (60)
-
-</td>
-</tr>
-</table>
+**Request Flow:**
+1. User pastes resume text in the React frontend
+2. Frontend sends `POST /api/upload-resume` with JWT Bearer token to Node.js API
+3. Node.js API forwards resume text to Python FastAPI engine at `POST /analyze`
+4. Python engine runs NLP skill extraction, gap analysis, scoring, and career path matching
+5. Results are persisted to MongoDB and returned to the frontend
+6. Frontend renders the dashboard with charts, score ring, skill tags, and roadmap
 
 ---
 
-### 🕳️ Skills Gap Intelligence
+## Tech Stack
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  Impact vs Effort Matrix                 │
-│                                                         │
-│  HIGH  │  Docker ●   │  Kubernetes ●  │               │
-│        │  TypeScript ●│  AWS ●         │  STRETCH      │
-│ IMPACT ├─────────────┼────────────────┤               │
-│        │  Redis ●    │  Go ●          │               │
-│  LOW   │             │                │  LOW PRIORITY │
-│        └─────────────┴────────────────┘               │
-│              LOW           HIGH                         │
-│                        EFFORT                           │
-└─────────────────────────────────────────────────────────┘
-```
+### Frontend — `client/`
+| Technology | Version | Purpose |
+|---|---|---|
+| React | 18.3 | UI framework |
+| TypeScript | 5.5 | Type safety |
+| Vite | 5.4 | Build tool & dev server |
+| Material UI (MUI) | 7.3 | Component library |
+| React Router DOM | 7.13 | Client-side routing |
+| Recharts | 3.8 | Data visualization (radar, area, bar, donut charts) |
+| Zustand | 5.0 | Global auth state management |
+| Framer Motion | 12 | Page animations |
+| GSAP | 3.15 | Spiral login animation |
+| React Dropzone | 15 | Drag-and-drop .txt file upload |
+| @react-oauth/google | 0.13 | Google One-Tap OAuth |
+| Axios | 1.13 | HTTP client |
 
-- **Priority Matrix** — 2×2 SVG quadrant: Impact vs Effort → tells you exactly what to learn *first*
-- **Animated Severity Bars** — Gap skills ranked by career impact with color-coded priority (critical / high / medium)
-- **Distribution Bar Chart** — Your skill profile breakdown at a glance
-- **Course Recommendations** — Every gap linked to a free/paid learning resource
+### Backend — `node-api/`
+| Technology | Version | Purpose |
+|---|---|---|
+| Node.js | 18+ | Runtime |
+| Express | 5.2 | Web framework |
+| Mongoose | 9.2 | MongoDB ODM |
+| JSON Web Token | 9.0 | Access + refresh token auth |
+| google-auth-library | 10.6 | Google ID token verification |
+| Axios | 1.13 | Proxy calls to Python AI |
+| Multer | 2.0 | File upload handling |
+| dotenv | 17 | Environment config |
 
----
+### AI Engine — `python-ai/`
+| Technology | Version | Purpose |
+|---|---|---|
+| Python | 3.11+ | Runtime |
+| FastAPI | 0.100+ | REST API framework |
+| Uvicorn | 0.22+ | ASGI server |
+| Pydantic | v2 | Request/response validation |
 
-### 🗺️ Career Path Flowchart
+### Database
+| Technology | Purpose |
+|---|---|
+| MongoDB Atlas | Cloud-hosted NoSQL — stores users and analysis history |
 
-```
-         ┌─────────────────────────────┐
-         │  01  Learn Docker basics    │  ← Step 1 (glow)
-         └──────────────┬──────────────┘
-                        ▼ (dashed connector)
-         ┌─────────────────────────────┐
-         │  02  Complete Kubernetes    │
-         │      fundamentals           │
-         └──────────────┬──────────────┘
-                        ▼
-         ┌─────────────────────────────┐
-         │  03  Build a CI/CD pipeline │
-         └──────────────┬──────────────┘
-                        ▼
-                      ...
-```
-
-- **SVG Tech-Tree Flowchart** — Step-by-step nodes with animated dashed connectors
-- **Role Match Cards** — Live skill matching with mini score rings showing your % match
-- **AI Career Paths** — Python AI returns personalized role suggestions with salary ranges
-- **Salary Intelligence** — Real market ranges per role matched to your profile
-
----
-
-### 📈 Progress History Timeline
-
-```
- ●84 ─ Analysis #4  Apr 29, 2026  [Latest]         ↑ +12 pts
-  │    ████████████████████████████████████ 84/100
-  │    Skills: Python, TypeScript, React, Node.js…  Gaps: Kubernetes, AWS
-
- ○72 ─ Analysis #3  Apr 10, 2026                   ↑ +18 pts
-  │    █████████████████████████████        72/100
-  │    Skills: React, TypeScript, Node.js…  Gaps: Kubernetes, AWS, GraphQL
-
- ○54 ─ Analysis #2  Mar 22, 2026                   ↑ +16 pts
-       ████████████████████████         54/100
-       Skills: React, JavaScript…  Gaps: TypeScript, Docker, MongoDB
-```
-
-- **Area Chart Trajectory** — See your readiness score grow over time
-- **Mini Score Rings** — SVG rings on every timeline node show score at a glance
-- **Delta Badges** — Green/red trend arrows show pts gained between analyses
-- **Progress Bars** — Per-entry score bar for instant comparison
+### Infrastructure
+| Technology | Purpose |
+|---|---|
+| Docker + Docker Compose | Local multi-service orchestration |
+| Vercel | Frontend + Node.js API serverless deployment |
+| Render | Python AI engine deployment |
 
 ---
 
-## 🛠️ Tech Stack
-
-```mermaid
-graph LR
-    subgraph UI ["Frontend"]
-        R["React 18"]
-        TS["TypeScript"]
-        V["Vite"]
-        M["MUI v5"]
-        RC["Recharts"]
-        Z["Zustand"]
-        RR["React Router v6"]
-        OA["@react-oauth/google"]
-    end
-
-    subgraph API ["Node.js API"]
-        E["Express.js"]
-        JWT["jsonwebtoken"]
-        BC["bcrypt"]
-        MG["Mongoose"]
-        RL["express-rate-limit"]
-    end
-
-    subgraph AI ["Python AI"]
-        FA["FastAPI"]
-        UV["uvicorn"]
-        PD["Pydantic"]
-        NLP2["NLP Pipeline"]
-    end
-
-    subgraph DB ["Data"]
-        MON["MongoDB"]
-        LS["localStorage\n(client cache)"]
-    end
-
-    UI --> API
-    API --> AI
-    API --> DB
-    UI --> LS
-```
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-futrix-ai/
-│
-├── 📱 client/                    # React 18 + TypeScript + Vite
-│   ├── public/
-│   │   └── logo.svg              # Futrix AI SVG logo + favicon
+career-twin-ai/
+├── client/                         # React TypeScript frontend
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── Sidebar.tsx       # Responsive sidebar + mobile drawer
-│   │   │   ├── ScoreRing.tsx     # Animated SVG circular progress
-│   │   │   └── charts/
-│   │   │       ├── SkillRadar.tsx    # Recharts radar chart
-│   │   │       ├── GapDonut.tsx      # Recharts donut chart
-│   │   │       ├── ScoreArea.tsx     # Recharts area chart
-│   │   │       └── FunnelBar.tsx     # Recharts bar chart
 │   │   ├── pages/
-│   │   │   ├── Login.tsx         # Spiral canvas + Google OAuth
-│   │   │   ├── Dashboard.tsx     # Score ring + charts grid
-│   │   │   ├── UploadResume.tsx  # Drag-and-drop + analyzing overlay
-│   │   │   ├── Result.tsx        # Full AI analysis view
-│   │   │   ├── SkillsGap.tsx     # Priority matrix + severity bars
-│   │   │   ├── CareerPath.tsx    # SVG flowchart + role cards
-│   │   │   ├── History.tsx       # Area chart + timeline
-│   │   │   └── Profile.tsx       # User profile + session
+│   │   │   ├── Login.tsx           # Google OAuth + email login
+│   │   │   ├── UploadResume.tsx    # Resume paste + drag-drop
+│   │   │   ├── Dashboard.tsx       # Main analytics dashboard
+│   │   │   ├── ResumeResult.tsx    # Full analysis breakdown
+│   │   │   ├── SkillsGap.tsx       # Gap priority matrix + bars
+│   │   │   ├── CareerPath.tsx      # SVG roadmap + role cards
+│   │   │   ├── History.tsx         # Score progression timeline
+│   │   │   └── Profile.tsx         # User profile
+│   │   ├── components/
+│   │   │   ├── ScoreRing.tsx       # Animated SVG score ring
+│   │   │   ├── Sidebar.tsx         # Navigation sidebar
+│   │   │   ├── SpiralAnimation.tsx # GSAP login background
+│   │   │   ├── FutrixLogo.tsx      # Brand logo component
+│   │   │   └── charts/
+│   │   │       ├── SkillRadar.tsx  # Recharts radar chart
+│   │   │       ├── GapDonut.tsx    # Coverage donut chart
+│   │   │       └── ScoreArea.tsx   # Score progression area chart
 │   │   ├── store/
-│   │   │   └── authStore.ts      # Zustand auth state
+│   │   │   ├── useAuth.ts          # Zustand auth store
+│   │   │   └── useResume.ts        # Resume state store
 │   │   ├── services/
-│   │   │   └── apiService.ts     # Axios wrapper + token handling
-│   │   ├── App.tsx               # Routes + AppShell + ProtectedRoute
-│   │   ├── theme.ts              # MUI dark theme design system
-│   │   └── index.css             # Global CSS + mobile resets
-│   ├── index.html                # PWA meta + viewport-fit=cover
-│   └── vite.config.ts            # Proxy + COOP config
+│   │   │   └── apiService.ts       # Singleton API client with auto token refresh
+│   │   └── App.tsx                 # Router + protected routes
+│   ├── vite.config.ts              # Vite proxy config
+│   └── package.json
 │
-├── ⚙️ node-api/                   # Node.js + Express REST API
-│   ├── middleware/
-│   │   ├── auth.js               # JWT verification middleware
-│   │   └── rateLimiter.js        # Express rate limiting
-│   ├── models/
-│   │   └── User.js               # Mongoose user schema
+├── node-api/                       # Express.js REST API
+│   ├── server.js                   # App entry point + MongoDB connect
 │   ├── routes/
-│   │   ├── authRoutes.js         # Google OAuth + JWT issue
-│   │   └── userRoutes.js         # Profile + analysis history
-│   └── server.js                 # Express app + MongoDB connect
+│   │   └── userRoutes.js           # All API route handlers
+│   ├── models/
+│   │   ├── User.js                 # User schema (email, googleId, tokens)
+│   │   └── Analysis.js             # Analysis schema (skills, gaps, score)
+│   ├── middleware/
+│   │   ├── auth.js                 # JWT Bearer token verification
+│   │   └── rateLimiter.js          # In-memory IP rate limiter
+│   ├── utils/
+│   │   └── authUtils.js            # JWT sign/verify helpers
+│   ├── api/
+│   │   └── index.js                # Vercel serverless entry
+│   ├── Dockerfile
+│   └── package.json
 │
-├── 🐍 python-ai/                  # FastAPI AI Engine
-│   ├── main.py                   # FastAPI app + all endpoints
-│   └── requirements.txt          # fastapi, uvicorn, pydantic
-│
-├── ☕ java-gateway/               # Spring Boot API Gateway (optional)
-│   ├── src/
-│   ├── pom.xml
+├── python-ai/                      # FastAPI AI engine
+│   ├── main.py                     # FastAPI app + route definitions
+│   ├── ai_engine.py                # Core NLP analysis logic
+│   ├── skills_db.json              # 160+ technology skill database
+│   ├── requirements.txt
 │   └── Dockerfile
 │
-├── 🚀 run-dev.bat                 # One-command: start all 4 services
-├── start-dev.bat                  # Alternative start with health checks
-├── setup.bat                      # First-time dependency installer
-├── health-check.js                # Service health monitor
-├── validate-env.js                # Environment config validator
-├── docker-compose.yml             # Docker multi-service setup
-└── netlify.toml                   # Netlify SPA + redirect config
+├── docker-compose.yml              # Multi-service local orchestration
+└── README.md
 ```
 
 ---
 
-## 🚀 Quick Start
+## Core Algorithms
+
+### 1. Skill Extraction Algorithm (`ai_engine.py`)
+
+The engine uses a **two-tier text-bounded matching** strategy to prevent false positives:
+
+```python
+_BOUNDARY_SKILLS = {"Go", "AI", "R", "C", "C#", "C++", "SQL", "GCP", "CSS", "HTML"}
+
+def _skill_present(skill: str, text: str) -> bool:
+    if skill in _BOUNDARY_SKILLS:
+        # Word-boundary regex for short/ambiguous terms
+        # Prevents "Go" matching "Google", "AI" matching "email"
+        pattern = rf'(?<![a-zA-Z]){re.escape(skill)}(?![a-zA-Z])'
+        return bool(re.search(pattern, text, re.IGNORECASE))
+    else:
+        # Case-insensitive substring match for unambiguous multi-char terms
+        return skill.lower() in text.lower()
+```
+
+**Why this matters:** Naive substring matching would detect "Go" inside "Google", "R" inside "React", "AI" inside "email". The boundary regex eliminates all false positives while maintaining recall for legitimate matches.
+
+---
+
+### 2. Context-Aware Gap Analysis Algorithm
+
+Gaps are **never generic** — they are only suggested when logically related to the candidate's detected domain:
+
+```
+Domain Detection:
+  has_frontend = skills ∩ {React, Vue, Angular, JavaScript, TypeScript, HTML, CSS} ≠ ∅
+  has_backend  = skills ∩ {Node.js, Python, Java, Django, Flask, FastAPI} ≠ ∅
+  has_devops   = skills ∩ {Docker, Kubernetes, CI/CD, Terraform, Linux} ≠ ∅
+  has_ml       = skills ∩ {Machine Learning, TensorFlow, PyTorch} ≠ ∅
+
+Gap Rules (examples):
+  IF has_frontend AND TypeScript ∉ skills AND JavaScript ∈ skills → suggest TypeScript
+  IF has_backend AND Docker ∉ skills → suggest Docker
+  IF has_devops AND Kubernetes ∉ skills AND Docker ∈ skills → suggest Kubernetes
+  IF has_ml AND Docker ∉ skills → suggest Docker (Model Deployment)
+```
+
+This ensures a pure frontend developer is never told to learn Kubernetes, and a DevOps engineer is never told to learn React.
+
+---
+
+### 3. Readiness Score Formula
+
+```
+base_score  = min(90, skill_count × 8 + 15)
+penalty     = gap_count × 3
+raw_score   = max(10, base_score - penalty)
+final_score = min(100, raw_score)
+
+Edge cases:
+  skill_count = 0 → score = 0
+  score always in range [0, 100]
+```
+
+**Score Breakdown (5 dimensions):**
+| Dimension | Formula |
+|---|---|
+| Skill Match | `(detected ∩ top-20 skills) / 20 × 100` |
+| Stack Balance | `(frontend_pct + backend_pct) / 2` |
+| Cloud Presence | `(detected ∩ {AWS, Azure, GCP}) / 3 × 100` |
+| DevOps Score | `(detected ∩ devops_skills) / devops_count × 100` |
+| Language Diversity | `min(100, detected_languages × 20)` |
+
+---
+
+### 4. Career Path Matching Algorithm
+
+```
+For each role in ROLE_CATALOG:
+  matched   = [skill for skill in role.skills_needed if skill ∈ user_skills]
+  missing   = [skill for skill in role.skills_needed if skill ∉ user_skills]
+  match_pct = round(len(matched) / len(role.skills_needed) × 100)
+
+Results sorted by match_pct descending
+```
+
+**Role Catalog (7 roles):**
+| Role | Salary Range | Key Skills |
+|---|---|---|
+| Frontend Engineer | $85k–$130k | React, TypeScript, JavaScript, CSS, HTML |
+| Full Stack Developer | $90k–$145k | React, Node.js, MongoDB, REST API, Docker |
+| Backend Engineer | $95k–$150k | Node.js, Python, MongoDB, Docker, AWS |
+| DevOps Engineer | $100k–$160k | Docker, Kubernetes, CI/CD, AWS, Linux |
+| Data Engineer | $105k–$155k | Python, SQL, Spark, AWS, Airflow |
+| ML Engineer | $120k–$180k | Python, Machine Learning, TensorFlow, Docker |
+| Cloud Architect | $130k–$200k | AWS, Kubernetes, Terraform, Docker |
+
+---
+
+### 5. Impact vs Effort Priority Matrix
+
+Each gap skill is scored on two axes for the 2×2 quadrant visualization:
+
+| Quadrant | Effort | Impact | Action |
+|---|---|---|---|
+| High Impact (top-left) | Low | High | Do first |
+| Stretch (top-right) | High | High | Plan for |
+| Quick Win (bottom-left) | Low | Low | Fill gaps |
+| Low Priority (bottom-right) | High | Low | Skip for now |
+
+Example mappings:
+```
+Docker:     effort=3, impact=9  → High Impact quadrant
+Kubernetes: effort=8, impact=10 → Stretch quadrant
+TypeScript: effort=3, impact=8  → High Impact quadrant
+Go:         effort=6, impact=7  → Stretch quadrant
+```
+
+---
+
+### 6. JWT Authentication Flow
+
+```
+Login:
+  POST /api/login or POST /api/auth/google
+  → generateAccessToken(user)  [15 min expiry, HS256]
+  → generateRefreshToken(user) [7 day expiry, separate secret]
+  → refreshToken stored in MongoDB user document
+
+Protected Request:
+  Authorization: Bearer <accessToken>
+  → auth middleware verifies with JWT_SECRET
+  → req.user = { id, email, role }
+
+Token Refresh:
+  POST /api/auth/refresh { refreshToken }
+  → verify with JWT_REFRESH_SECRET
+  → compare against stored refreshToken in DB (rotation check)
+  → issue new access + refresh token pair
+
+Account Lock:
+  5 failed login attempts → lock for 2 hours
+  lockUntil stored in User document
+```
+
+---
+
+### 7. Resume Comparison Algorithm (`/compare` endpoint)
+
+```python
+def compare_analyses(a, b):
+    new_skills    = [s for s in b.skills     if s not in a.skills]
+    resolved_gaps = [g for g in a.gap_skills if g not in b.gap_skills]
+    remaining     = b.gap_skills
+    score_delta   = b.readiness_score - a.readiness_score
+
+    return { before, after, delta: { score_change, new_skills, resolved_gaps, remaining_gaps } }
+```
+
+This powers the History page's progress tracking — showing exactly which skills were added and which gaps were closed between resume versions.
+
+---
+
+## API Reference
+
+### Authentication Endpoints
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/login` | None | Email-based passwordless login |
+| POST | `/api/auth/google` | None | Google OAuth ID token verification |
+| POST | `/api/auth/refresh` | None | Rotate access + refresh tokens |
+| GET | `/api/auth/verify` | Bearer | Verify current access token |
+| POST | `/api/auth/logout` | Bearer | Invalidate refresh token |
+
+### Analysis Endpoints
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/upload-resume` | Bearer | Analyze resume text, persist to DB |
+| GET | `/api/history` | Bearer | Fetch last 20 analyses for user |
+| GET | `/api/compare?id1=&id2=` | Bearer | Compare two analyses, return delta |
+| POST | `/api/jobs/match` | Bearer | Match skills against job database |
+
+### Python AI Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/analyze` | Full resume analysis (skills + gaps + score + roadmap + career paths) |
+| POST | `/score-breakdown` | 5-dimension score breakdown only |
+| POST | `/career-path` | Career path matching for a given skill list |
+| POST | `/compare` | Compare two resume texts, return delta |
+| GET | `/` | Health check |
+
+---
+
+## Data Models
+
+### User (MongoDB)
+```javascript
+{
+  email:         String (unique, required),
+  name:          String,
+  googleId:      String,
+  avatar:        String,
+  refreshToken:  String,
+  lastLogin:     Date,
+  loginAttempts: Number (default: 0),
+  lockUntil:     Date,
+  timestamps:    true
+}
+```
+
+### Analysis (MongoDB)
+```javascript
+{
+  email:           String (indexed),
+  resumeText:      String,
+  skills:          [String],
+  gap_skills:      [String],
+  readiness_score: Number,
+  roadmap:         [String],
+  score_breakdown: {
+    skill_match, stack_balance, cloud_presence, devops_score, language_div
+  },
+  career_paths: [{
+    role, match_percent, salary_range, skills_needed
+  }],
+  timestamps: true   // compound index on (email, createdAt)
+}
+```
+
+---
+
+## Frontend Pages
+
+| Route | Page | Description |
+|---|---|---|
+| `/login` | Login | Google OAuth + email login with GSAP spiral animation |
+| `/upload` | Upload Resume | Paste or drag-drop .txt resume, animated analysis overlay |
+| `/dashboard` | Dashboard | Score ring, skill tags, gap chips, radar chart, roadmap preview |
+| `/result` | Resume Result | Full breakdown: score, radar, donut, skills, gaps, AI tips, roadmap |
+| `/skills-gap` | Skills Gap | Priority matrix, animated gap bars, bar chart, impact vs effort |
+| `/career-path` | Career Path | SVG flowchart roadmap + role match cards with mini score rings |
+| `/history` | History | Score progression area chart + timeline of past analyses |
+| `/profile` | Profile | User info and account settings |
+
+---
+
+## How to Run Locally
 
 ### Prerequisites
+- Node.js 18+
+- Python 3.11+
+- MongoDB (local or Atlas URI)
+- Google OAuth Client ID (for Google login)
 
-| Requirement | Version |
-|---|---|
-| Node.js | 18+ |
-| Python | 3.10+ |
-| MongoDB | Running locally |
-| Git | Latest |
-
-### 1 — Clone
-
+### 1. Clone the repository
 ```bash
-git clone https://github.com/kirtan597/Futrix-Ai.git
-cd Futrix-Ai
+git clone https://github.com/your-username/futrix-ai.git
+cd futrix-ai/career-twin-ai
 ```
 
-### 2 — Setup (First Time)
-
+### 2. Start the Python AI Engine
 ```bash
-# Auto-installs all dependencies
-.\setup.bat
+cd python-ai
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+# Running at http://localhost:8000
 ```
 
-Or manually:
-
+### 3. Start the Node.js API
 ```bash
-cd client && npm install && cd ..
-cd node-api && npm install && cd ..
-cd python-ai && pip install -r requirements.txt && cd ..
+cd node-api
+npm install
+# Create .env (see node-api/.env.example)
+node server.js
+# Running at http://localhost:5000
 ```
 
-### 3 — Environment Variables
-
-**`node-api/.env`**
+**Required `node-api/.env`:**
 ```env
+MONGO_URI=mongodb+srv://<user>:<pass>@cluster0.xxx.mongodb.net/
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/futrixai
-JWT_SECRET=<generate_64_char_hex>
-GOOGLE_CLIENT_ID=<your_google_client_id>
-GOOGLE_CLIENT_SECRET=<your_google_client_secret>
+JWT_SECRET=<your-32-char-secret>
+JWT_REFRESH_SECRET=<your-32-char-refresh-secret>
+GOOGLE_CLIENT_ID=<your-google-client-id>
+GOOGLE_CLIENT_SECRET=<your-google-client-secret>
+NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 ```
 
-**`client/.env`**
+### 4. Start the React Frontend
+```bash
+cd client
+npm install
+# Create .env (see client/.env.example)
+npm run dev
+# Running at http://localhost:5173
+```
+
+**Required `client/.env`:**
 ```env
-VITE_GOOGLE_CLIENT_ID=<your_google_client_id>
+VITE_GOOGLE_CLIENT_ID=<your-google-client-id>
 VITE_API_URL=http://localhost:5000
 ```
 
-> 🔑 Get your Google Client ID from [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → OAuth 2.0 Client IDs
-> Add `http://localhost:5173` as an Authorized JavaScript Origin.
-
-### 4 — Launch
-
+### 5. Run with Docker Compose (all services)
 ```bash
-.\run-dev.bat
+cd career-twin-ai
+docker-compose up --build
 ```
-
-| Service | URL | Status |
-|---|---|---|
-| 🖥️ Frontend | http://localhost:5173 | React + Vite |
-| ⚙️ Node API | http://localhost:5000 | Express + JWT |
-| 🐍 Python AI | http://localhost:8000 | FastAPI + uvicorn |
-| 🗄️ MongoDB | localhost:27017 | Database |
+Services:
+- Frontend: http://localhost:5173
+- Node API: http://localhost:5000
+- Python AI: http://localhost:8000
+- MongoDB: localhost:27017
 
 ---
 
-## 📡 API Reference
+## Example Analysis
 
-### Python AI — `http://localhost:8000`
-
-```mermaid
-graph LR
-    A["POST /analyze"] --> B["Extract Skills\n(NLP)"]
-    B --> C["Score 0–100"]
-    B --> D["Detect Gaps"]
-    D --> E["Generate Roadmap"]
-    C --> F["Match Roles"]
-    E & F --> G["JSON Response"]
+**Input Resume Text:**
+```
+Software Engineer with 3 years of experience.
+Skills: React, TypeScript, Node.js, Python, MongoDB, Docker, Git, REST API
+Experience:
+- Built full-stack web applications using React and Node.js
+- Deployed services using Docker and AWS
+- Worked in Agile/Scrum teams
 ```
 
-**`POST /analyze`**
-
+**Output:**
 ```json
-// Request
-{ "resume_text": "Full resume text here..." }
-
-// Response
 {
-  "readiness_score": 84,
-  "skills": ["React", "TypeScript", "Node.js", "Python", "MongoDB"],
-  "gap_skills": ["Kubernetes", "AWS", "GraphQL"],
+  "skills": ["React", "TypeScript", "Node.js", "Python", "MongoDB", "Docker", "Git", "REST API", "AWS", "Agile", "Scrum"],
+  "gap_skills": ["Kubernetes", "CI/CD Pipeline"],
+  "readiness_score": 79,
   "roadmap": [
-    "Master Docker containerization",
-    "Complete Kubernetes for Beginners",
-    "Deploy on AWS EC2 + S3"
+    "Learn Kubernetes",
+    "Learn CI/CD Pipeline",
+    "Build a portfolio project combining your detected skills",
+    "Prepare for technical interviews in your domain"
   ],
+  "score_breakdown": {
+    "skill_match": 55.0,
+    "stack_balance": 62.5,
+    "cloud_presence": 33.3,
+    "devops_score": 28.6,
+    "language_div": 40.0
+  },
   "career_paths": [
-    {
-      "role": "Full Stack Developer",
-      "match_percent": 82,
-      "salary_range": "$90k–$145k",
-      "skills_needed": ["React", "Node.js", "MongoDB", "Docker"],
-      "matched_skills": ["React", "Node.js", "MongoDB"],
-      "missing_skills": ["Docker"]
-    }
+    { "role": "Full Stack Developer", "match_percent": 100, "salary_range": "$90k–$145k" },
+    { "role": "Backend Engineer",     "match_percent": 100, "salary_range": "$95k–$150k" },
+    { "role": "Frontend Engineer",    "match_percent": 60,  "salary_range": "$85k–$130k" }
   ]
 }
 ```
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/` | GET | Health check — engine version |
-| `/analyze` | POST | Full resume analysis |
-| `/score-breakdown` | POST | Detailed scoring per category |
-| `/career-path` | POST | Role match analysis only |
-| `/compare` | POST | Compare two resumes |
+---
 
-### Node API — `http://localhost:5000`
+## Security Features
 
-| Endpoint | Method | Auth | Description |
-|---|---|---|---|
-| `GET /health` | GET | — | Server health |
-| `POST /api/auth/google` | POST | — | Exchange Google credential for JWT |
-| `GET /api/auth/verify` | GET | Bearer | Verify JWT token |
-| `GET /api/user/profile` | GET | Bearer | Get user profile |
-| `POST /api/resume/upload` | POST | Bearer | Upload + analyze resume |
+- **JWT Rotation** — Access tokens expire in 15 minutes; refresh tokens rotate on every use
+- **Refresh Token Binding** — Refresh tokens are stored in MongoDB and validated on each rotation (prevents token reuse after logout)
+- **Account Lockout** — 5 failed login attempts triggers a 2-hour lock
+- **Rate Limiting** — Login endpoints limited to 5 requests per 15 minutes per IP
+- **CORS Whitelist** — Only allowed origins can call the API
+- **No Passwords** — Passwordless email login + Google OAuth only; no password storage
+- **Input Validation** — Resume text minimum 50 characters enforced at both API and AI layer
 
 ---
 
-## 📱 Mobile Experience
+## Deployment
 
-Futrix AI is fully mobile-responsive:
-
-```
-Mobile (< 600px)              Desktop (> 900px)
-┌─────────────────┐           ┌────┬─────────────────────┐
-│ ☰  Futrix AI   │           │    │                     │
-├─────────────────┤           │ S  │   Dashboard         │
-│                 │           │ I  │                     │
-│   Page Content  │           │ D  │   Score Ring        │
-│                 │           │ E  │   Charts Grid       │
-│                 │           │ B  │                     │
-│                 │           │ A  │                     │
-├─────────────────┤           │ R  │                     │
-│ 🏠  📄  📊  👤 │           │    │                     │
-│ Bottom Nav Bar  │           └────┴─────────────────────┘
-└─────────────────┘
-```
-
-- **Bottom navigation bar** — Home, Upload, Results, Gaps, Profile (always visible)
-- **Slide-out drawer** — Full menu accessible via hamburger
-- **44px touch targets** — WCAG-compliant touch areas throughout
-- **PWA-ready** — `viewport-fit=cover`, iOS safe-area insets, theme-color meta
-
----
-
-## 🎨 Design System
-
-Futrix AI uses a **premium monochrome SaaS aesthetic**:
-
-| Token | Value | Usage |
-|---|---|---|
-| Background | `#0a0a0a` | Page backgrounds |
-| Surface | `rgba(255,255,255,0.025)` | Glass cards |
-| Border | `rgba(255,255,255,0.065)` | Card borders |
-| Text Primary | `#ffffff` | Headings |
-| Text Secondary | `rgba(255,255,255,0.4)` | Labels |
-| Critical | `rgba(248,113,113,0.85)` | Critical gaps |
-| High | `rgba(251,191,36,0.85)` | High priority |
-| Medium | `rgba(148,163,184,0.7)` | Medium priority |
-| Positive | `rgba(134,239,172,0.85)` | Growth / success |
-
-**Typography:** Inter (Google Fonts) · **Radius:** 12–18px · **Animation:** `cubic-bezier(0.4,0,0.2,1)`
-
----
-
-## 🚢 Deployment
-
-### Frontend → Netlify
-
-`netlify.toml` is pre-configured:
-
-```toml
-[build]
-  base    = "client"
-  command = "npm run build"
-  publish = "dist"
-
-[[redirects]]
-  from = "/*"
-  to   = "/index.html"
-  status = 200
-```
-
-Set these in Netlify dashboard → Environment variables:
-```
-VITE_GOOGLE_CLIENT_ID = your_client_id
-VITE_API_URL = https://your-node-api.railway.app
-```
-
-### Python AI → Railway / Render
-
+### Frontend → Vercel
 ```bash
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
+cd client
+vercel --prod
+# Set VITE_GOOGLE_CLIENT_ID and VITE_API_URL in Vercel dashboard
 ```
 
-### Node API → Railway / Render
-
+### Node.js API → Vercel (Serverless) or Render
+The `api/index.js` file exports the Express app for Vercel serverless functions.
 ```bash
-npm install
-npm start
+cd node-api
+vercel --prod
+# Or deploy to Render using render.yaml
 ```
 
-### Docker (All services)
-
+### Python AI → Render
 ```bash
-docker-compose up --build
+cd python-ai
+# render.yaml is pre-configured
+# Set ALLOWED_ORIGINS env var to your frontend URL
 ```
 
 ---
 
-## 🔐 Security
+## Skills Database
 
-- **JWT** — 64-character random hex secret, short expiry
-- **Google OAuth 2.0** — Server-side token verification via Google API
-- **Rate Limiting** — `express-rate-limit` on all auth endpoints
-- **CORS** — Strict origin allowlist (localhost + production domain only)
-- **Token Storage** — `accessToken` in `localStorage`, refreshed on expiry
-- **Input Validation** — Pydantic models on all Python AI endpoints
+The AI engine detects **160+ technologies** from `skills_db.json`, organized across:
 
----
-
-## 🗺️ Roadmap
-
-- [ ] PDF parsing (currently text-based)
-- [ ] ATS score simulation (beat the bots)
-- [ ] LinkedIn profile import
-- [ ] Multi-language resume support
-- [ ] Job posting URL → instant gap analysis
-- [ ] Interview prep module (AI-generated questions based on gaps)
-- [ ] Weekly progress email reports
-- [ ] Resume builder with gap-aware suggestions
+- **Languages:** Python, JavaScript, TypeScript, Java, Go, Rust, C++, C#, Kotlin, Swift, PHP, Ruby, Scala, R, Dart
+- **Frontend:** React, Vue, Angular, Next.js, Svelte, HTML, CSS, Tailwind, Bootstrap
+- **Backend:** Node.js, Express, Django, Flask, FastAPI, Spring Boot, Ruby on Rails
+- **Databases:** MongoDB, PostgreSQL, MySQL, Redis, SQLite, DynamoDB, Cassandra, Neo4j, Elasticsearch
+- **Cloud:** AWS, Azure, GCP, Vercel, Netlify, Heroku, DigitalOcean, Cloudflare
+- **AWS Services:** S3, Lambda, EC2, ECS, Fargate, CloudFormation
+- **DevOps:** Docker, Kubernetes, CI/CD, Terraform, Ansible, Jenkins, GitHub Actions, CircleCI
+- **ML/AI:** TensorFlow, PyTorch, Scikit-Learn, Keras, OpenCV, Hugging Face, LangChain, RAG, LLM
+- **Testing:** Jest, Cypress, Selenium, Playwright, Pytest, JUnit
+- **Monitoring:** Prometheus, Grafana, Datadog, Sentry
+- **Messaging:** Apache Kafka, RabbitMQ
+- **Auth/API:** OAuth, JWT, GraphQL, gRPC, WebSocket, REST API, Swagger
 
 ---
 
-## 🤝 Contributing
+## Key Design Decisions
 
-```bash
-# Fork the repo, then:
-git checkout -b feat/your-feature
-git commit -m "feat: your awesome feature"
-git push origin feat/your-feature
-# Open a Pull Request
-```
+1. **Text-only analysis, no LLM** — The AI engine uses deterministic regex + dictionary matching instead of an LLM. This guarantees zero hallucination, consistent results, and sub-100ms response times without API costs.
 
----
+2. **Domain-scoped gaps** — A frontend developer should never be told to learn Spark or Airflow. Gap suggestions are gated behind domain detection flags, making every recommendation actionable and relevant.
 
-## 📄 License
+3. **Passwordless auth** — Eliminates password storage, hashing, and breach risk entirely. Users authenticate via Google OAuth or a magic-link-style email token.
 
-MIT License — free to use, fork, modify, and distribute.
+4. **Refresh token rotation** — Every token refresh issues a new refresh token and invalidates the old one. This prevents refresh token reuse after logout or theft.
+
+5. **Strict score formula** — The readiness score is a deterministic formula, not an LLM opinion. This makes it reproducible, explainable, and trustworthy.
 
 ---
 
-<div align="center">
+## License
 
-<br />
-
-**Futrix AI** · Built by [Kirtann](https://github.com/kirtan597) · v2.0 · 2026
-
-*From resume to roadmap — in seconds.*
-
-<br />
-
-⭐ If this project helped you, consider giving it a star!
-
-</div>
+MIT License — free to use, modify, and distribute.

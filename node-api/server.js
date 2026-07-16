@@ -31,16 +31,44 @@ app.use(cors(corsOptions));
 
 // Connect to MongoDB with better error handling
 const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/futrixai";
-mongoose.connect(mongoUri)
-    .then(() => {
-        console.log("✅ MongoDB connected successfully");
-        console.log(`   Database: ${mongoUri}`);
-    })
-    .catch(err => {
-        console.error("❌ MongoDB connection error:", err.message);
-        console.error("   Please ensure MongoDB is running on localhost:27017");
-        process.exit(1);
-    });
+
+async function connectDB() {
+    let retries = 5;
+    while (retries) {
+        try {
+            await mongoose.connect(mongoUri);
+            console.log("✅ MongoDB connected successfully");
+            break;
+        } catch (err) {
+            retries--;
+            console.error(`❌ MongoDB connection error: ${err.message}`);
+            if (err.message.includes('ENOTFOUND') || err.message.includes('querySrv')) {
+                console.error("   ⚠️  Cannot reach MongoDB Atlas. Check:");
+                console.error("   1. Your IP is whitelisted in Atlas Network Access");
+                console.error("   2. Username/password in MONGO_URI is correct");
+                console.error("   3. Internet connection is working");
+                console.error("   💡 Falling back to local MongoDB...");
+                // Try local MongoDB as fallback
+                try {
+                    await mongoose.connect("mongodb://localhost:27017/futrixai");
+                    console.log("✅ Connected to LOCAL MongoDB as fallback");
+                    break;
+                } catch (localErr) {
+                    console.error("❌ Local MongoDB also failed:", localErr.message);
+                    console.error("   Please start MongoDB: mongod");
+                }
+            }
+            if (retries === 0) {
+                console.error("❌ All MongoDB connection attempts failed. Server running WITHOUT database.");
+            } else {
+                console.log(`   Retrying in 3 seconds... (${retries} retries left)`);
+                await new Promise(r => setTimeout(r, 3000));
+            }
+        }
+    }
+}
+
+connectDB();
 
 // Routes
 app.use("/api", require("./routes/userRoutes"));

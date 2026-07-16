@@ -38,10 +38,14 @@ class CareerPathRequest(BaseModel):
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 @app.get("/")
-def health():
+def root():
     return {"status": "Futrix AI Engine v2.0 running 🐍", "endpoints": [
         "/analyze", "/score-breakdown", "/career-path", "/compare"
     ]}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 # ─── POST /analyze — full resume analysis ────────────────────────────────────
 

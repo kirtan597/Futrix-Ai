@@ -15,9 +15,11 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // ─── POST /api/login ──────────────────────────────────────────────────────────
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 router.post("/login", rateLimiter(5, 15 * 60 * 1000), async (req, res) => {
     const { email } = req.body;
-    if (!email || !email.includes("@")) {
+    if (!email || !EMAIL_REGEX.test(email)) {
         return res.status(400).json({ error: "A valid email is required." });
     }
     try {
@@ -62,45 +64,27 @@ router.post("/login", rateLimiter(5, 15 * 60 * 1000), async (req, res) => {
 
 // ─── POST /api/auth/google ────────────────────────────────────────────────────
 router.post("/auth/google", rateLimiter(10, 15 * 60 * 1000), async (req, res) => {
-    console.log('=== BACKEND: Google OAuth Request Received ===');
-    console.log('Request body:', req.body);
-    
     const { credential } = req.body;
     if (!credential) {
-        console.error('No credential in request body');
         return res.status(400).json({ error: "Google credential is required." });
     }
-    
-    console.log('Credential received, length:', credential.length);
-    console.log('GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID);
-    
     try {
-        console.log('Verifying ID token with Google...');
-        // Verify Google ID token
         const ticket = await googleClient.verifyIdToken({
             idToken: credential,
             audience: GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
-        console.log('Token verified! Payload:', { email: payload.email, sub: payload.sub, email_verified: payload.email_verified });
-        
         const { email, sub, name, picture, email_verified } = payload;
 
-        // Check if email is verified
         if (!email_verified) {
-            console.error('Email not verified:', email);
             return res.status(403).json({ 
                 error: "Email not verified", 
                 message: "Please verify your email with Google first." 
             });
         }
 
-        console.log('Finding/creating user for email:', email);
         let user = await User.findOne({ email });
-        
         if (!user) {
-            console.log('Creating new user...');
-            // Create new user
             user = await User.create({
                 email,
                 name: name || email.split('@')[0],
@@ -108,65 +92,31 @@ router.post("/auth/google", rateLimiter(10, 15 * 60 * 1000), async (req, res) =>
                 avatar: picture,
                 lastLogin: new Date()
             });
-            console.log('New user created:', user._id);
         } else {
-            console.log('Existing user found:', user._id);
-            // Update existing user with Google info
-            if (!user.googleId) {
-                user.googleId = sub;
-            }
-            user.name = name || user.name;
+            if (!user.googleId) user.googleId = sub;
+            user.name  = name  || user.name;
             user.avatar = picture || user.avatar;
             user.lastLogin = new Date();
-            
-            // Reset login attempts on successful login
-            if (user.loginAttempts > 0) {
-                await user.resetLoginAttempts();
-            }
-            
+            if (user.loginAttempts > 0) await user.resetLoginAttempts();
             await user.save();
-            console.log('User updated');
         }
 
-        console.log('Generating tokens...');
-        // Generate tokens
         const { accessToken, refreshToken } = generateTokens(user);
-        
-        // Save refresh token to database
         user.refreshToken = refreshToken;
         await user.save();
 
-        console.log('Sending success response');
-        const response = { 
+        res.json({ 
             status: "logged_in", 
             accessToken,
             refreshToken,
-            user: {
-                id: user._id,
-                email: user.email,
-                name: user.name,
-                avatar: user.avatar
-            }
-        };
-        console.log('Response:', { ...response, accessToken: 'HIDDEN', refreshToken: 'HIDDEN' });
-        console.log('=== BACKEND: Google OAuth Success ===');
-        
-        res.json(response);
-    } catch (err) {
-        console.error("[google-auth] ERROR:", err);
-        console.error("Error stack:", err.stack);
-        
-        if (err.message && err.message.includes("Token used too late")) {
-            return res.status(401).json({ 
-                error: "Token expired", 
-                message: "Google token has expired. Please try again." 
-            });
-        }
-        
-        res.status(500).json({ 
-            error: "Google authentication failed",
-            message: err.message || "Unable to verify Google credentials. Please try again."
+            user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar }
         });
+    } catch (err) {
+        console.error("[google-auth]", err.message);
+        if (err.message && err.message.includes("Token used too late")) {
+            return res.status(401).json({ error: "Token expired", message: "Google token expired. Please try again." });
+        }
+        res.status(500).json({ error: "Google authentication failed", message: err.message });
     }
 });
 
@@ -275,7 +225,7 @@ router.get("/auth/verify", auth, async (req, res) => {
 });
 
 // ─── POST /api/upload-resume ──────────────────────────────────────────────────
-router.post("/upload-resume", auth, async (req, res) => {
+router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000), async (req, res) => {
     const { text, email } = req.body;
     if (!text || text.trim().length < 50) {
         return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });

@@ -9,6 +9,16 @@ if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
     console.error('[Futrix AI] VITE_API_URL is not set. API calls will fail in production.');
 }
 
+// ─── Local JWT expiry check — no extra HTTP call needed ──────────────────────
+function isTokenExpired(token: string): boolean {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return Date.now() >= payload.exp * 1000 - 30_000; // 30s buffer
+    } catch {
+        return true;
+    }
+}
+
 class ApiService {
     private static instance: ApiService;
     private refreshPromise: Promise<string> | null = null;
@@ -24,15 +34,15 @@ class ApiService {
         const { refreshToken, setAuth, clearAuth } = useAuth.getState();
         
         if (!refreshToken) {
+            clearAuth();
+            window.location.href = '/login';
             throw new Error('No refresh token available');
         }
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken }),
             });
 
@@ -42,8 +52,6 @@ class ApiService {
             }
 
             const data = await response.json();
-            
-            // Update tokens in store
             const currentUser = useAuth.getState();
             setAuth(data.accessToken, data.refreshToken, {
                 email: currentUser.email!,
@@ -53,8 +61,8 @@ class ApiService {
 
             return data.accessToken;
         } catch (error) {
-            // Clear auth on refresh failure
             clearAuth();
+            window.location.href = '/login';
             throw error;
         }
     }
@@ -63,28 +71,16 @@ class ApiService {
         const { accessToken } = useAuth.getState();
         
         if (!accessToken) {
+            window.location.href = '/login';
             throw new Error('No access token available');
         }
 
-        // Try to use current token first
-        try {
-            // Test if token is valid by making a quick verification call
-            const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
-            });
-
-            if (response.ok) {
-                return accessToken;
-            }
-        } catch (error) {
-            // Token might be expired, try to refresh
-            console.log('Token verification failed, attempting refresh...');
+        // ✅ Decode JWT locally — no extra HTTP call
+        if (!isTokenExpired(accessToken)) {
+            return accessToken;
         }
 
-        // Token is invalid/expired, refresh it
+        // Token is expired — refresh it (deduplicate concurrent refresh attempts)
         if (!this.refreshPromise) {
             this.refreshPromise = this.refreshAccessToken();
         }
@@ -99,17 +95,12 @@ class ApiService {
         }
     }
 
-    async request<T = any>(
-        endpoint: string,
-        options: RequestInit = {}
-    ): Promise<T> {
+    async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
         
         try {
-            // Get valid access token
             const accessToken = await this.getValidAccessToken();
             
-            // Make the request with the token
             const response = await fetch(url, {
                 ...options,
                 headers: {
@@ -118,6 +109,13 @@ class ApiService {
                     ...options.headers,
                 },
             });
+
+            if (response.status === 401) {
+                // Force refresh on unexpected 401
+                useAuth.getState().clearAuth();
+                window.location.href = '/login';
+                throw new Error('Session expired. Please login again.');
+            }
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -131,7 +129,6 @@ class ApiService {
         }
     }
 
-    // Convenience methods
     async get<T = any>(endpoint: string): Promise<T> {
         return this.request<T>(endpoint, { method: 'GET' });
     }
@@ -154,11 +151,8 @@ class ApiService {
         return this.request<T>(endpoint, { method: 'DELETE' });
     }
 
-    // Public methods that don't require authentication
-    async publicRequest<T = any>(
-        endpoint: string,
-        options: RequestInit = {}
-    ): Promise<T> {
+    // Public requests that don't require authentication (login, OAuth)
+    async publicRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
         
         const response = await fetch(url, {

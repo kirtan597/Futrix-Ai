@@ -17,14 +17,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: true,
-    headers: {
-      'Cross-Origin-Opener-Policy': 'unsafe-none',
-    },
+    strictPort: false,   // auto-use next free port if 5173 is taken
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
+        secure: false,
       },
     },
   },
