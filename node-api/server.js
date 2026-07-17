@@ -120,15 +120,13 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Export for Vercel serverless
+// Export for serverless (Vercel etc.)
 module.exports = app;
 
-// Local development server
-if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-        console.log(`🚀 Node API running on port ${PORT}`);
-        console.log(`   Health check: http://localhost:${PORT}/health`);
-        console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-}
+// Always start the HTTP server — Render and all other platforms need this
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Node API running on port ${PORT}`);
+    console.log(`   Health check: http://localhost:${PORT}/health`);
+    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+});
