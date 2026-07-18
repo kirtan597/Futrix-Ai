@@ -5,6 +5,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  VITE_API_URL = "https://futrix-node-api.onrender.com"
 
 # SPA routing — send all routes to index.html
 [[redirects]]

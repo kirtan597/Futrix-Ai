@@ -25,13 +25,13 @@ export default function SkillRadar({ skills, gapSkills }: SkillRadarProps) {
     const data = buildData(skills, gapSkills);
 
     return (
-        <Box sx={{ width: '100%', height: 280 }}>
+        <Box sx={{ width: '100%', height: { xs: 220, sm: 280 } }}>
             <ResponsiveContainer width="100%" height="100%" style={{ background: 'transparent' }}>
-                <RadarChart data={data} outerRadius={90}>
+                <RadarChart data={data} outerRadius="38%">
                     <PolarGrid stroke="rgba(255,255,255,0.06)" gridType="polygon" />
                     <PolarAngleAxis
                         dataKey="subject"
-                        tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+                        tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }}
                     />
                     <Tooltip
                         wrapperStyle={{ outline: 'none' }}

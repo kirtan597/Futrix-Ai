@@ -15,15 +15,15 @@ export default function GapDonut({ skillsCount, gapCount }: GapDonutProps) {
     const COLORS = ['rgba(255,255,255,0.85)', 'rgba(255,255,255,0.2)'];
 
     return (
-        <Box sx={{ width: '100%', height: 220 }}>
+        <Box sx={{ width: '100%', height: { xs: 180, sm: 220 } }}>
             <ResponsiveContainer width="100%" height="100%" style={{ background: 'transparent' }}>
                 <PieChart>
                     <Pie
                         data={data}
                         cx="50%"
                         cy="50%"
-                        innerRadius={55}
-                        outerRadius={80}
+                        innerRadius="40%"
+                        outerRadius="58%"
                         paddingAngle={4}
                         dataKey="value"
                         strokeWidth={0}

@@ -52,12 +52,12 @@ function ArcBar({ skill, level, pct, course }: { skill: string; level: 'critical
     return (
         <Box sx={{ mb: 1.8 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.7 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
                     <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: style.color, flexShrink: 0 }} />
-                    <Typography sx={{ fontSize: '0.83rem', fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>{skill}</Typography>
-                    <Chip label={style.label} size="small" sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700, background: style.bg, color: style.color, border: `1px solid ${style.border}`, px: 0.3 }} />
+                    <Typography sx={{ fontSize: '0.83rem', fontWeight: 600, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skill}</Typography>
+                    <Chip label={style.label} size="small" sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700, background: style.bg, color: style.color, border: `1px solid ${style.border}`, px: 0.3, flexShrink: 0 }} />
                 </Box>
-                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>{course}</Typography>
+                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', flexShrink: 0, ml: 1, display: { xs: 'none', sm: 'block' }, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course}</Typography>
             </Box>
             <Box sx={{ height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
                 <Box ref={barRef} sx={{ height: '100%', borderRadius: 99, background: style.color, transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)', boxShadow: `0 0 8px ${style.color}` }} />

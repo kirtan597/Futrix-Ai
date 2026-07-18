@@ -133,6 +133,8 @@ export default function UploadResume() {
         accept: { 'text/plain': ['.txt'] },
     });
 
+    const API_BASE = import.meta.env.VITE_API_URL || '';
+
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -140,7 +142,7 @@ export default function UploadResume() {
         const email = localStorage.getItem('userEmail') || '';
         const token = localStorage.getItem('accessToken') || '';
         try {
-            const response = await fetch('/api/upload-resume', {
+            const response = await fetch(`${API_BASE}/api/upload-resume`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ text: resumeText, email }),
@@ -156,9 +158,9 @@ export default function UploadResume() {
                 localStorage.removeItem('analysisResult');
                 setError(data.error || 'Analysis failed. Please try again.');
             }
-        } catch {
+        } catch (err: any) {
             localStorage.removeItem('analysisResult');
-            setError('Cannot connect to Node.js API on port 5000. Is it running?');
+            setError(`Network error: ${err?.message || 'Could not reach API at ' + API_BASE}`);
         } finally {
             setLoading(false);
         }
@@ -196,10 +198,10 @@ export default function UploadResume() {
                             </Typography>
                         </Box>
                     </Box>
-                    <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', lineHeight: 1.7, ml: '52px', maxWidth: 500, mb: 2 }}>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', lineHeight: 1.7, ml: { xs: 0, sm: '52px' }, maxWidth: 500, mb: 2 }}>
                         Our AI engine extracts skills strictly from your pasted text — no assumptions, no hallucinations. Only what you write is analyzed.
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: '52px' }}>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: { xs: 0, sm: '52px' } }}>
                         {['Text-Only Detection', 'Gap Analysis', 'Score 0–100', 'Roadmap'].map((f) => (
                             <Chip
                                 key={f}
