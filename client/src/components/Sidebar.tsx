@@ -146,13 +146,12 @@ function SidebarContent({
 
     const handleLogout = async () => {
         try {
-            const token = localStorage.getItem('accessToken');
-            if (token) {
-                await fetch('/api/auth/logout', {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-            }
+            const { refreshToken } = useAuth.getState();
+            await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/logout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken }),
+            });
         } catch { /* ignore */ }
         clearAuth();
         navigate('/login');

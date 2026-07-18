@@ -173,20 +173,14 @@ router.post("/auth/refresh", async (req, res) => {
 });
 
 // ─── POST /api/auth/logout ────────────────────────────────────────────────────
-router.post("/auth/logout", auth, async (req, res) => {
+// No auth middleware — token may already be expired when user logs out
+router.post("/auth/logout", async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        
-        if (user) {
-            // Clear refresh token
-            user.refreshToken = null;
-            await user.save();
+        const { refreshToken } = req.body;
+        if (refreshToken) {
+            await User.findOneAndUpdate({ refreshToken }, { refreshToken: null });
         }
-        
-        res.json({ 
-            status: "logged_out",
-            message: "Successfully logged out"
-        });
+        res.json({ status: "logged_out" });
     } catch (err) {
         console.error("[logout]", err.message);
         res.status(500).json({ error: "Logout failed" });
@@ -261,6 +255,9 @@ router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000), async (req, 
         }
         if (err.response?.data?.detail) {
             return res.status(400).json({ error: err.response.data.detail });
+        }
+        if (err.name === "ValidationError" || err.name === "MongoServerError") {
+            return res.status(500).json({ error: "Failed to save analysis. Please try again.", detail: err.message });
         }
         res.status(500).json({ error: "Analysis failed. Please try again.", detail: err.message });
     }
