@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiService from '../services/apiService';
 import { useDropzone } from 'react-dropzone';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
@@ -133,34 +134,18 @@ export default function UploadResume() {
         accept: { 'text/plain': ['.txt'] },
     });
 
-    const API_BASE = import.meta.env.VITE_API_URL || '';
-
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
         const email = localStorage.getItem('userEmail') || '';
-        const token = localStorage.getItem('accessToken') || '';
         try {
-            const response = await fetch(`${API_BASE}/api/upload-resume`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ text: resumeText, email }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                localStorage.setItem('analysisResult', JSON.stringify(data));
-                navigate('/dashboard');
-            } else if (response.status === 401) {
-                localStorage.clear();
-                navigate('/login');
-            } else {
-                localStorage.removeItem('analysisResult');
-                setError(data.error || 'Analysis failed. Please try again.');
-            }
+            const data = await apiService.post('/api/upload-resume', { text: resumeText, email });
+            localStorage.setItem('analysisResult', JSON.stringify(data));
+            navigate('/dashboard');
         } catch (err: any) {
             localStorage.removeItem('analysisResult');
-            setError(`Network error: ${err?.message || 'Could not reach API at ' + API_BASE}`);
+            setError(err?.message || 'Analysis failed. Please try again.');
         } finally {
             setLoading(false);
         }
