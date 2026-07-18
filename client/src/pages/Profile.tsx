@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../store/useAuth';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -54,8 +55,10 @@ export default function Profile() {
         setTimeout(() => setMounted(true), 80);
     }, []);
 
+    const { clearAuth } = useAuth();
+
     const handleLogout = () => {
-        localStorage.clear();
+        clearAuth();
         navigate('/login');
     };
 

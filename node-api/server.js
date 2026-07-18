@@ -13,11 +13,12 @@ const allowedOrigins = [
     process.env.FRONTEND_URL,
 ].filter(Boolean);
 
+// Dynamic CORS — also allow any *.netlify.app subdomain
 const corsOptions = {
     origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, Postman, curl)
         if (!origin) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (origin.endsWith('.netlify.app')) return callback(null, true);
         callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
@@ -25,6 +26,8 @@ const corsOptions = {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
+
+
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

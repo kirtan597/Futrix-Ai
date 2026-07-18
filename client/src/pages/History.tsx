@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
+import Button from '@mui/material/Button';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, ReferenceLine,
@@ -10,6 +13,8 @@ import {
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
 import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
 import TrendingDownOutlinedIcon from '@mui/icons-material/TrendingDownOutlined';
+import apiService from '../services/apiService';
+import { useAuth } from '../store/useAuth';
 
 const MOCK_HISTORY = [
     { id: 1, date: '2026-04-10', skills: ['React','TypeScript','Node.js','Python','MongoDB','Docker','Git','REST API'], gap_skills: ['Kubernetes','AWS','GraphQL','Redis','Go'], readiness_score: 72, roadmap_steps: 5 },
@@ -60,8 +65,12 @@ function MiniRing({ score, size = 56 }: { score: number; size?: number }) {
 export default function History() {
     const [mounted, setMounted] = useState(false);
     const [real, setReal] = useState<typeof MOCK_HISTORY[0] | null>(null);
+    const [apiHistory, setApiHistory] = useState<typeof MOCK_HISTORY>([]);
+    const { email } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
+        // Load latest from localStorage
         const stored = localStorage.getItem('analysisResult');
         if (stored) {
             try {
@@ -76,10 +85,29 @@ export default function History() {
                 });
             } catch { /* */ }
         }
+        // Fetch real history from API
+        if (email) {
+            apiService.get(`/api/history?email=${encodeURIComponent(email)}`)
+                .then((data: any[]) => {
+                    const mapped = data.map((h: any) => ({
+                        id: h._id,
+                        date: h.createdAt?.split('T')[0] ?? new Date().toISOString().split('T')[0],
+                        skills: h.skills ?? [],
+                        gap_skills: h.gap_skills ?? [],
+                        readiness_score: h.readiness_score ?? 0,
+                        roadmap_steps: h.roadmap?.length ?? 0,
+                    }));
+                    setApiHistory(mapped);
+                })
+                .catch(() => { /* fall back to mock */ });
+        }
         setTimeout(() => setMounted(true), 80);
-    }, []);
+    }, [email]);
 
-    const history = real ? [real, ...MOCK_HISTORY] : MOCK_HISTORY;
+    // Prefer real API history; fall back to mock if empty
+    const history = apiHistory.length > 0
+        ? (real && !apiHistory.find(h => h.id === 0) ? [real, ...apiHistory] : apiHistory)
+        : (real ? [real, ...MOCK_HISTORY] : MOCK_HISTORY);
 
     const chartData = [...history].reverse().map((h, i) => ({
         label: i === history.length - 1 && real ? 'Now' : h.date.slice(5),

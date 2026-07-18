@@ -14,11 +14,14 @@ _prod_origins = [o.strip() for o in _extra.split(",") if o.strip()]
 allowed_origins = [
     "http://localhost:5173",
     "http://localhost:5000",
+    "https://futrixai.netlify.app",
+    "https://futrix-node-api.onrender.com",
 ] + _prod_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
