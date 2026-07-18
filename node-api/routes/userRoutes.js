@@ -231,13 +231,14 @@ router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000), async (req, 
         return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
     }
     try {
-        // Wake up Python AI (Render free tier cold start can take ~30s)
+        // Wake up Python AI (Render free tier cold start ~30s)
         try { await axios.get(`${PYTHON_URL}/`, { timeout: 15_000 }); } catch (_) {}
+
         // Call Python AI engine
         const aiRes = await axios.post(`${PYTHON_URL}/analyze`, { resume: text }, { timeout: 60_000 });
         const aiData = aiRes.data;
 
-        // Persist analysis to MongoDB
+        // Persist to MongoDB
         const saved = await Analysis.create({
             email:           email || req.user?.email,
             resumeText:      text,
@@ -253,9 +254,15 @@ router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000), async (req, 
     } catch (err) {
         console.error("[upload-resume]", err.message);
         if (err.code === "ECONNREFUSED") {
-            return res.status(503).json({ error: "Python AI engine is not running on port 8000." });
+            return res.status(503).json({ error: "AI engine is offline. Please try again in 30 seconds." });
         }
-        res.status(500).json({ error: "Analysis failed. Please try again." });
+        if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+            return res.status(503).json({ error: "AI engine is still waking up. Please wait 30 seconds and try again." });
+        }
+        if (err.response?.data?.detail) {
+            return res.status(400).json({ error: err.response.data.detail });
+        }
+        res.status(500).json({ error: "Analysis failed. Please try again.", detail: err.message });
     }
 });
 

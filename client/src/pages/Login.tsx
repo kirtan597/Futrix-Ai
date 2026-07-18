@@ -225,8 +225,6 @@ export default function Login() {
                                 shape="pill"
                                 size="large"
                                 text="continue_with"
-                                useOneTap={false}
-                                auto_select={false}
                             />
                         </Box>
 
