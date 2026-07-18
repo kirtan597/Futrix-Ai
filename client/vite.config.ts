@@ -7,17 +7,22 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-vendor':   ['react', 'react-dom', 'react-router-dom'],
-          'mui-vendor':     ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
-          'chart-vendor':   ['recharts'],
-          'motion-vendor':  ['framer-motion', 'gsap'],
+          'react-vendor':  ['react', 'react-dom', 'react-router-dom'],
+          'mui-vendor':    ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+          'chart-vendor':  ['recharts'],
+          'motion-vendor': ['framer-motion', 'gsap'],
         },
       },
     },
   },
   server: {
     port: 5173,
-    strictPort: false,   // auto-use next free port if 5173 is taken
+    strictPort: true,
+    // Required: allows Google OAuth popup to postMessage back to the app
+    headers: {
+      'Cross-Origin-Opener-Policy':   'unsafe-none',
+      'Cross-Origin-Embedder-Policy': 'unsafe-none',
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
@@ -27,4 +32,3 @@ export default defineConfig({
     },
   },
 })
-

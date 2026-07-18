@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import Button from '@mui/material/Button';
-import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, ReferenceLine,
@@ -67,7 +64,6 @@ export default function History() {
     const [real, setReal] = useState<typeof MOCK_HISTORY[0] | null>(null);
     const [apiHistory, setApiHistory] = useState<typeof MOCK_HISTORY>([]);
     const { email } = useAuth();
-    const navigate = useNavigate();
 
     useEffect(() => {
         // Load latest from localStorage

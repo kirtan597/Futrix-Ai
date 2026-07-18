@@ -10,15 +10,16 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://futrixai.netlify.app',
+    'https://futrix-ai.vercel.app',
     process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-// Dynamic CORS — also allow any *.netlify.app subdomain
 const corsOptions = {
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
+    origin: (origin: any, callback: any) => {
+        if (!origin) return callback(null, true); // curl / Postman / mobile
         if (allowedOrigins.includes(origin)) return callback(null, true);
-        if (origin.endsWith('.netlify.app')) return callback(null, true);
+        // Allow any Vercel preview deploy or Netlify branch deploy
+        if (origin.endsWith('.vercel.app') || origin.endsWith('.netlify.app')) return callback(null, true);
         callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,

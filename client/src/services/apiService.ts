@@ -1,22 +1,43 @@
 import { useAuth } from '../store/useAuth';
 
-// Use Vite proxy in development, deployed API URL in production
+// ── Base URL ──────────────────────────────────────────────────────────────────
+// Dev  → empty string, Vite proxy forwards /api → localhost:5000
+// Prod → VITE_API_URL must be set in Vercel dashboard
 const API_BASE_URL = import.meta.env.DEV
-    ? ''  // Vite proxy handles /api → localhost:5000
-    : import.meta.env.VITE_API_URL || '';
+    ? ''
+    : (import.meta.env.VITE_API_URL || 'https://futrix-node-api.onrender.com').replace(/\/$/, '');
 
-if (!import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
-    console.error('[Futrix AI] VITE_API_URL is not set. API calls will fail in production.');
-}
-
-// ─── Local JWT expiry check — no extra HTTP call needed ──────────────────────
+// ── JWT decode (local, no HTTP call) ─────────────────────────────────────────
 function isTokenExpired(token: string): boolean {
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        return Date.now() >= payload.exp * 1000 - 30_000; // 30s buffer
+        return Date.now() >= payload.exp * 1000 - 30_000;
     } catch {
         return true;
     }
+}
+
+// ── Friendly error messages ───────────────────────────────────────────────────
+function friendlyError(err: any, endpoint: string): string {
+    const msg: string = err?.message || '';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
+        return 'Cannot reach the server. Please check your connection or try again in a moment.';
+    }
+    if (msg.includes('503') || msg.includes('Service Unavailable')) {
+        return 'The AI engine is waking up (free tier cold start). Please wait 30 seconds and try again.';
+    }
+    if (msg.includes('500')) {
+        return endpoint.includes('upload-resume')
+            ? 'Analysis failed. The AI engine may be starting up — please wait 30 seconds and try again.'
+            : 'Server error. Please try again.';
+    }
+    if (msg.includes('401') || msg.includes('Token Expired')) {
+        return 'Your session expired. Please log in again.';
+    }
+    if (msg.includes('429')) {
+        return 'Too many requests. Please wait a minute and try again.';
+    }
+    return msg || 'Something went wrong. Please try again.';
 }
 
 class ApiService {
@@ -24,84 +45,62 @@ class ApiService {
     private refreshPromise: Promise<string> | null = null;
 
     static getInstance(): ApiService {
-        if (!ApiService.instance) {
-            ApiService.instance = new ApiService();
-        }
+        if (!ApiService.instance) ApiService.instance = new ApiService();
         return ApiService.instance;
     }
 
     private async refreshAccessToken(): Promise<string> {
         const { refreshToken, setAuth, clearAuth } = useAuth.getState();
-        
         if (!refreshToken) {
             clearAuth();
             window.location.href = '/login';
             throw new Error('No refresh token available');
         }
-
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+            const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken }),
             });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || errorData.error || 'Token refresh failed');
-            }
-
-            const data = await response.json();
-            const currentUser = useAuth.getState();
+            if (!res.ok) throw new Error('Token refresh failed');
+            const data = await res.json();
+            const cur = useAuth.getState();
             setAuth(data.accessToken, data.refreshToken, {
-                email: currentUser.email!,
-                name: currentUser.name || undefined,
-                avatar: currentUser.avatar || undefined,
+                email: cur.email!,
+                name: cur.name || undefined,
+                avatar: cur.avatar || undefined,
             });
-
             return data.accessToken;
-        } catch (error) {
+        } catch (err) {
             clearAuth();
             window.location.href = '/login';
-            throw error;
+            throw err;
         }
     }
 
     private async getValidAccessToken(): Promise<string> {
         const { accessToken } = useAuth.getState();
-        
         if (!accessToken) {
             window.location.href = '/login';
-            throw new Error('No access token available');
+            throw new Error('No access token');
         }
-
-        // ✅ Decode JWT locally — no extra HTTP call
-        if (!isTokenExpired(accessToken)) {
-            return accessToken;
-        }
-
-        // Token is expired — refresh it (deduplicate concurrent refresh attempts)
-        if (!this.refreshPromise) {
-            this.refreshPromise = this.refreshAccessToken();
-        }
-
+        if (!isTokenExpired(accessToken)) return accessToken;
+        if (!this.refreshPromise) this.refreshPromise = this.refreshAccessToken();
         try {
-            const newToken = await this.refreshPromise;
+            const token = await this.refreshPromise;
             this.refreshPromise = null;
-            return newToken;
-        } catch (error) {
+            return token;
+        } catch (err) {
             this.refreshPromise = null;
-            throw error;
+            throw err;
         }
     }
 
     async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
-        
         try {
             const accessToken = await this.getValidAccessToken();
-            
-            const response = await fetch(url, {
+            const res = await fetch(url, {
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
@@ -109,23 +108,18 @@ class ApiService {
                     ...options.headers,
                 },
             });
-
-            if (response.status === 401) {
-                // Force refresh on unexpected 401
+            if (res.status === 401) {
                 useAuth.getState().clearAuth();
                 window.location.href = '/login';
-                throw new Error('Session expired. Please login again.');
+                throw new Error('401');
             }
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || body.error || String(res.status));
             }
-
-            return await response.json();
-        } catch (error) {
-            console.error(`API request failed for ${endpoint}:`, error);
-            throw error;
+            return await res.json();
+        } catch (err: any) {
+            throw new Error(friendlyError(err, endpoint));
         }
     }
 
@@ -140,35 +134,22 @@ class ApiService {
         });
     }
 
-    async put<T = any>(endpoint: string, data?: any): Promise<T> {
-        return this.request<T>(endpoint, {
-            method: 'PUT',
-            body: data ? JSON.stringify(data) : undefined,
-        });
-    }
-
-    async delete<T = any>(endpoint: string): Promise<T> {
-        return this.request<T>(endpoint, { method: 'DELETE' });
-    }
-
-    // Public requests that don't require authentication (login, OAuth)
+    // No auth — login / google oauth
     async publicRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
-        
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
+        try {
+            const res = await fetch(url, {
+                ...options,
+                headers: { 'Content-Type': 'application/json', ...options.headers },
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || body.error || String(res.status));
+            }
+            return await res.json();
+        } catch (err: any) {
+            throw new Error(friendlyError(err, endpoint));
         }
-
-        return await response.json();
     }
 }
 

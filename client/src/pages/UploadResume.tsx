@@ -59,25 +59,35 @@ function Panel({ children, sx = {} }: { children: React.ReactNode; sx?: object }
 
 // ─── Analysis loading overlay ─────────────────────────────────────────────────
 function AnalyzingOverlay({ visible }: { visible: boolean }) {
-    const steps = ['Parsing resume...', 'Extracting skills...', 'Detecting gaps...', 'Scoring readiness...', 'Building roadmap...'];
-    // Hooks MUST be called before any early return (Rules of Hooks)
+    const steps = [
+        'Waking up AI engine...',
+        'Parsing resume...',
+        'Extracting skills...',
+        'Detecting gaps...',
+        'Scoring readiness...',
+        'Building roadmap...',
+    ];
     const [step, setStep] = React.useState(0);
+    const [elapsed, setElapsed] = React.useState(0);
+
     React.useEffect(() => {
-        if (!visible) return;
-        const t = setInterval(() => setStep(prev => Math.min(prev + 1, steps.length - 1)), 900);
-        return () => clearInterval(t);
+        if (!visible) { setStep(0); setElapsed(0); return; }
+        const stepTimer = setInterval(() => setStep(prev => Math.min(prev + 1, steps.length - 1)), 5000);
+        const secTimer  = setInterval(() => setElapsed(prev => prev + 1), 1000);
+        return () => { clearInterval(stepTimer); clearInterval(secTimer); };
     }, [visible]);
 
     if (!visible) return null;
 
+    const isSlow = elapsed > 15;
+
     return (
         <Box sx={{
             position: 'fixed', inset: 0, zIndex: 999,
-            background: 'rgba(10,10,10,0.85)',
+            background: 'rgba(10,10,10,0.92)',
             backdropFilter: 'blur(12px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexDirection: 'column',
-            gap: 3,
+            flexDirection: 'column', gap: 3,
         }}>
             <Box sx={{
                 width: 64, height: 64, borderRadius: '18px',
@@ -88,20 +98,26 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
             }}>
                 <AutoAwesomeOutlinedIcon sx={{ fontSize: 28, color: 'rgba(255,255,255,0.7)' }} />
             </Box>
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', px: 3 }}>
                 <Typography sx={{ fontWeight: 700, color: '#fff', fontSize: '1.1rem', letterSpacing: '-0.02em', mb: 1 }}>
                     Analyzing with AI
                 </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.85rem', mb: 3 }}>
+                <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem', mb: 0.5 }}>
                     {steps[step]}
+                </Typography>
+                {isSlow && (
+                    <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', mb: 2 }}>
+                        AI engine is waking up on free tier — this can take up to 60s on first request
+                    </Typography>
+                )}
+                <Typography sx={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.72rem', mb: 3 }}>
+                    {elapsed}s elapsed
                 </Typography>
                 <Box sx={{ width: 220, mx: 'auto' }}>
                     <LinearProgress
-                        variant="determinate"
-                        value={((step + 1) / steps.length) * 100}
+                        variant="indeterminate"
                         sx={{
-                            height: 2,
-                            borderRadius: 99,
+                            height: 2, borderRadius: 99,
                             background: 'rgba(255,255,255,0.05)',
                             '& .MuiLinearProgress-bar': { background: 'rgba(255,255,255,0.5)' },
                         }}

@@ -10,6 +10,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { GoogleLogin } from '@react-oauth/google';
 import FutrixLogo from '../components/FutrixLogo';
 import SpiralAnimation from '../components/SpiralAnimation';
+import ServiceStatus from '../components/ServiceStatus';
 import { useAuth } from '../store/useAuth';
 import apiService from '../services/apiService';
 
@@ -78,6 +79,7 @@ export default function Login() {
             overflow: 'hidden',
             position: 'relative',
         }}>
+            <ServiceStatus />
             {/* Spiral background */}
             <Box sx={{ position: 'absolute', inset: 0, zIndex: 0 }}>
                 <SpiralAnimation />
