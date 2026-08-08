@@ -13,29 +13,31 @@ interface FutrixLogoProps {
 export default function FutrixLogo({ size = 34, glow = false, sx }: FutrixLogoProps) {
     return (
         <Box
-            sx={{
-                width: size,
-                height: size,
-                borderRadius: `${Math.round(size * 0.24)}px`,
-                background: 'linear-gradient(135deg, #ffffff 0%, #c0c0c0 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: glow
-                    ? '0 6px 24px rgba(255,255,255,0.15), 0 0 40px rgba(255,255,255,0.05)'
-                    : '0 2px 10px rgba(255,255,255,0.08)',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::after': glow ? {
-                    content: '""',
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 'inherit',
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 60%)',
-                } : {},
-                ...sx as any,
-            }}
+            sx={[
+                {
+                    width: size,
+                    height: size,
+                    borderRadius: `${Math.round(size * 0.24)}px`,
+                    background: 'linear-gradient(135deg, #ffffff 0%, #c0c0c0 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: glow
+                        ? '0 6px 24px rgba(255,255,255,0.15), 0 0 40px rgba(255,255,255,0.05)'
+                        : '0 2px 10px rgba(255,255,255,0.08)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&::after': glow ? {
+                        content: '""',
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: 'inherit',
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 60%)',
+                    } : {},
+                },
+                ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+            ]}
         >
             <svg
                 width={Math.round(size * 0.62)}

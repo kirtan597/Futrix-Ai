@@ -20,15 +20,6 @@ import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlin
 import EastIcon from '@mui/icons-material/East';
 import { extractResumeText } from '../services/resumeParser';
 
-const SAMPLE_RESUME = `Software Engineer with 3 years of experience.
-
-Skills: React, TypeScript, Node.js, Python, MongoDB, Docker, Git, REST API
-
-Experience:
-- Built full-stack web applications using React and Node.js
-- Deployed services using Docker and AWS
-- Worked in Agile/Scrum teams`;
-
 const STEPS = [
     { num: '01', text: 'AI scans your exact text for known technologies' },
     { num: '02', text: 'Gaps are identified based on your detected stack' },
@@ -136,6 +127,8 @@ export default function UploadResume() {
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const getErrorMessage = (err: unknown, fallback: string) =>
+        err instanceof Error ? err.message : fallback;
 
     // ── Dropzone ──
     const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -162,9 +155,9 @@ export default function UploadResume() {
             const data = await apiService.post('/api/upload-resume', { text: resumeText, email });
             localStorage.setItem('analysisResult', JSON.stringify(data));
             navigate('/dashboard');
-        } catch (err: any) {
+        } catch (err: unknown) {
             localStorage.removeItem('analysisResult');
-            setError(err?.message || 'Analysis failed. Please try again.');
+            setError(getErrorMessage(err, 'Analysis failed. Please try again.'));
         } finally {
             setLoading(false);
         }
@@ -264,8 +257,8 @@ export default function UploadResume() {
                                                 try {
                                                     const text = await extractResumeText(f);
                                                     setResumeText(text);
-                                                } catch (err: any) {
-                                                    setError(err?.message || 'Failed to read file');
+                                                } catch (err: unknown) {
+                                                    setError(getErrorMessage(err, 'Failed to read file'));
                                                 } finally {
                                                     setLoading(false);
                                                     ev.currentTarget.value = '';

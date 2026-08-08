@@ -14,10 +14,9 @@ export default function ServiceStatus() {
     const [elapsed, setElapsed] = useState(0);
 
     useEffect(() => {
-        let timer: ReturnType<typeof setInterval>;
-        let attempts = 0;
+            let attempts = 0;
 
-        const check = async () => {
+            const check = async () => {
             try {
                 const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(6000) });
                 if (res.ok) {
@@ -32,11 +31,11 @@ export default function ServiceStatus() {
             if (attempts > 10) { setStatus('offline'); clearInterval(timer); }
         };
 
-        check(); // immediate first check
-        timer = setInterval(() => {
+        const timer = setInterval(() => {
             setElapsed(e => e + 5);
             check();
         }, 5000);
+        check(); // immediate first check
 
         return () => clearInterval(timer);
     }, []);

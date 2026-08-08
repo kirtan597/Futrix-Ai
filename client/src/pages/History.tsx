@@ -13,11 +13,29 @@ import TrendingDownOutlinedIcon from '@mui/icons-material/TrendingDownOutlined';
 import apiService from '../services/apiService';
 import { useAuth } from '../store/useAuth';
 
-const MOCK_HISTORY = [
+interface HistoryEntry {
+    id: string | number;
+    date: string;
+    skills: string[];
+    gap_skills: string[];
+    readiness_score: number;
+    roadmap_steps: number;
+}
+
+const MOCK_HISTORY: HistoryEntry[] = [
     { id: 1, date: '2026-04-10', skills: ['React','TypeScript','Node.js','Python','MongoDB','Docker','Git','REST API'], gap_skills: ['Kubernetes','AWS','GraphQL','Redis','Go'], readiness_score: 72, roadmap_steps: 5 },
     { id: 2, date: '2026-03-22', skills: ['React','JavaScript','Node.js','Git','REST API'], gap_skills: ['TypeScript','Docker','MongoDB','Kubernetes','AWS','GraphQL','Redis'], readiness_score: 54, roadmap_steps: 7 },
     { id: 3, date: '2026-02-14', skills: ['React','JavaScript','Git'], gap_skills: ['TypeScript','Node.js','MongoDB','Docker','Kubernetes','AWS','GraphQL','Redis','Go'], readiness_score: 38, roadmap_steps: 9 },
 ];
+
+interface HistoryResponseItem {
+    _id: string;
+    createdAt?: string;
+    skills?: string[];
+    gap_skills?: string[];
+    readiness_score?: number;
+    roadmap?: string[];
+}
 
 // Thin separator with zero background — replaces MUI Divider which bleeds white
 function Sep() {
@@ -61,8 +79,8 @@ function MiniRing({ score, size = 56 }: { score: number; size?: number }) {
 
 export default function History() {
     const [mounted, setMounted] = useState(false);
-    const [real, setReal] = useState<typeof MOCK_HISTORY[0] | null>(null);
-    const [apiHistory, setApiHistory] = useState<typeof MOCK_HISTORY>([]);
+    const [real, setReal] = useState<HistoryEntry | null>(null);
+    const [apiHistory, setApiHistory] = useState<HistoryEntry[]>([]);
     const { email } = useAuth();
 
     useEffect(() => {
@@ -83,9 +101,9 @@ export default function History() {
         }
         // Fetch real history from API
         if (email) {
-            apiService.get(`/api/history?email=${encodeURIComponent(email)}`)
-                .then((data: any[]) => {
-                    const mapped = data.map((h: any) => ({
+            apiService.get<HistoryResponseItem[]>(`/api/history?email=${encodeURIComponent(email)}`)
+                .then((data) => {
+                    const mapped = data.map((h) => ({
                         id: h._id,
                         date: h.createdAt?.split('T')[0] ?? new Date().toISOString().split('T')[0],
                         skills: h.skills ?? [],

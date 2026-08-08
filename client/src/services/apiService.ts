@@ -18,8 +18,12 @@ function isTokenExpired(token: string): boolean {
 }
 
 // ── Friendly error messages ───────────────────────────────────────────────────
-function friendlyError(err: any, endpoint: string): string {
-    const msg: string = err?.message || '';
+function getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : '';
+}
+
+function friendlyError(err: unknown, endpoint: string): string {
+    const msg = getErrorMessage(err);
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
         return 'Cannot reach the server. Please check your connection or try again in a moment.';
     }
@@ -96,7 +100,7 @@ class ApiService {
         }
     }
 
-    async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    async request<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
         try {
             const accessToken = await this.getValidAccessToken();
@@ -118,16 +122,16 @@ class ApiService {
                 throw new Error(body.message || body.error || String(res.status));
             }
             return await res.json();
-        } catch (err: any) {
+        } catch (err: unknown) {
             throw new Error(friendlyError(err, endpoint));
         }
     }
 
-    async get<T = any>(endpoint: string): Promise<T> {
+    async get<T = unknown>(endpoint: string): Promise<T> {
         return this.request<T>(endpoint, { method: 'GET' });
     }
 
-    async post<T = any>(endpoint: string, data?: any): Promise<T> {
+    async post<T = unknown>(endpoint: string, data?: unknown): Promise<T> {
         return this.request<T>(endpoint, {
             method: 'POST',
             body: data ? JSON.stringify(data) : undefined,
@@ -135,7 +139,7 @@ class ApiService {
     }
 
     // No auth — login / google oauth
-    async publicRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    async publicRequest<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
         try {
             const res = await fetch(url, {
@@ -147,7 +151,7 @@ class ApiService {
                 throw new Error(body.message || body.error || String(res.status));
             }
             return await res.json();
-        } catch (err: any) {
+        } catch (err: unknown) {
             throw new Error(friendlyError(err, endpoint));
         }
     }

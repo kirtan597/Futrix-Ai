@@ -1,4 +1,4 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, type Shadows } from '@mui/material/styles';
 
 // ─── Futrix AI — Monochrome SaaS Design System ───────────────────────────
 // Sophisticated black, white & gray palette. Premium, minimal, data-forward.
@@ -78,7 +78,7 @@ const theme = createTheme({
         '0 14px 36px rgba(0,0,0,0.65)',
         '0 20px 48px rgba(0,0,0,0.7)',
         ...Array(18).fill('none'),
-    ] as any,
+    ] as Shadows,
     components: {
         MuiCssBaseline: {
             styleOverrides: {

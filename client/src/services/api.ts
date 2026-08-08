@@ -141,11 +141,18 @@ function isTokenExpired(token: string): boolean {
 export { isTokenExpired };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
+interface AuthUser {
+    id: string;
+    email: string;
+    name?: string;
+    avatar?: string;
+}
+
 export const loginUser = (email: string) =>
-    api.post<{ status: string; accessToken: string; refreshToken: string; user: any }>('/login', { email });
+    api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/login', { email });
 
 export const googleLogin = (credential: string) =>
-    api.post<{ status: string; accessToken: string; refreshToken: string; user: any }>('/auth/google', { credential });
+    api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/auth/google', { credential });
 
 export const refreshAccessToken = (refreshToken: string) =>
     api.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken });
@@ -154,7 +161,7 @@ export const logoutUser = () =>
     api.post('/auth/logout');
 
 export const verifyToken = () =>
-    api.get<{ valid: boolean; user: any }>('/auth/verify');
+    api.get<{ valid: boolean; user: AuthUser }>('/auth/verify');
 
 // ─── Resume ──────────────────────────────────────────────────────────────────
 export interface AnalyzePayload { text: string; email: string }

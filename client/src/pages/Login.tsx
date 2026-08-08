@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import { GoogleLogin } from '@react-oauth/google';
+import { CredentialResponse, GoogleLogin } from '@react-oauth/google';
 import FutrixLogo from '../components/FutrixLogo';
 import SpiralAnimation from '../components/SpiralAnimation';
 import ServiceStatus from '../components/ServiceStatus';
@@ -35,22 +35,42 @@ export default function Login() {
 
     const { setAuth } = useAuth();
 
-    const storeAuthData = (data: any) => {
+    interface AuthUser {
+        email: string;
+        name?: string;
+        avatar?: string;
+    }
+
+    interface AuthResponse {
+        accessToken: string;
+        refreshToken: string;
+        user: AuthUser;
+    }
+
+    const getErrorMessage = (err: unknown, fallback: string) =>
+        err instanceof Error ? err.message : fallback;
+
+    const storeAuthData = (data: AuthResponse) => {
         setAuth(data.accessToken, data.refreshToken, data.user);
         navigate('/dashboard', { replace: true });
     };
 
-    const handleGoogleSuccess = async (credentialResponse: any) => {
+    const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
         setLoading(true);
         setError('');
         try {
-            const data = await apiService.publicRequest('/api/auth/google', {
+            if (!credentialResponse.credential) {
+                setError('Google credential is missing. Please try again.');
+                setLoading(false);
+                return;
+            }
+            const data = await apiService.publicRequest<AuthResponse>('/api/auth/google', {
                 method: 'POST',
                 body: JSON.stringify({ credential: credentialResponse.credential }),
             });
             storeAuthData(data);
-        } catch (err: any) {
-            setError(err.message || 'Google login failed');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Google login failed'));
             setLoading(false);
         }
     };
@@ -60,13 +80,13 @@ export default function Login() {
         setLoading(true);
         setError('');
         try {
-            const data = await apiService.publicRequest('/api/login', {
+            const data = await apiService.publicRequest<AuthResponse>('/api/login', {
                 method: 'POST',
                 body: JSON.stringify({ email }),
             });
             storeAuthData(data);
-        } catch (err: any) {
-            setError(err.message || 'Login failed');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Login failed'));
             setLoading(false);
         }
     };
