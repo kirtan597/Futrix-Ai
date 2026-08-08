@@ -68,12 +68,24 @@ router.post("/auth/google", rateLimiter(10, 15 * 60 * 1000), async (req, res) =>
     if (!credential) {
         return res.status(400).json({ error: "Google credential is required." });
     }
+    if (!GOOGLE_CLIENT_ID) {
+        return res.status(500).json({
+            error: "Google OAuth is not configured",
+            message: "GOOGLE_CLIENT_ID is missing on the backend."
+        });
+    }
     try {
         const ticket = await googleClient.verifyIdToken({
             idToken: credential,
             audience: GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
+        if (!payload || !payload.email || !payload.sub) {
+            return res.status(401).json({
+                error: "Invalid Google token",
+                message: "Google token payload is incomplete or invalid."
+            });
+        }
         const { email, sub, name, picture, email_verified } = payload;
 
         if (!email_verified) {
@@ -112,11 +124,34 @@ router.post("/auth/google", rateLimiter(10, 15 * 60 * 1000), async (req, res) =>
             user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar }
         });
     } catch (err) {
-        console.error("[google-auth]", err.message);
-        if (err.message && err.message.includes("Token used too late")) {
+        const msg = err?.message || "Unknown Google auth error";
+        console.error("[google-auth]", msg);
+
+        if (msg.includes("Token used too late")) {
             return res.status(401).json({ error: "Token expired", message: "Google token expired. Please try again." });
         }
-        res.status(500).json({ error: "Google authentication failed", message: err.message });
+
+        if (
+            msg.includes("Wrong recipient") ||
+            msg.includes("audience") ||
+            msg.includes("Invalid token") ||
+            msg.includes("malformed") ||
+            msg.includes("Wrong number of segments")
+        ) {
+            return res.status(401).json({
+                error: "Invalid Google token",
+                message: "Google token validation failed. Ensure frontend and backend use the same Google client ID."
+            });
+        }
+
+        if (msg.includes("Expiration time too far in future") || msg.includes("used too early")) {
+            return res.status(401).json({
+                error: "System clock out of sync",
+                message: "Server time is out of sync with Google. Sync your OS date/time and try Google sign-in again."
+            });
+        }
+
+        res.status(500).json({ error: "Google authentication failed", message: msg });
     }
 });
 

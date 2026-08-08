@@ -15,7 +15,7 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 const corsOptions = {
-    origin: (origin: any, callback: any) => {
+    origin: (origin, callback) => {
         if (!origin) return callback(null, true); // curl / Postman / mobile
         if (allowedOrigins.includes(origin)) return callback(null, true);
         // Allow any Vercel preview deploy or Netlify branch deploy

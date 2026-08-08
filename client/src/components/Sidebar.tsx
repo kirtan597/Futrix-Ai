@@ -11,6 +11,10 @@ import { useTheme } from '@mui/material/styles';
 import FutrixLogo from './FutrixLogo';
 import { useAuth } from '../store/useAuth';
 
+const API_BASE = import.meta.env.DEV
+    ? ''
+    : (import.meta.env.VITE_API_URL || 'https://futrix-node-api.onrender.com').replace(/\/$/, '');
+
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
@@ -147,7 +151,7 @@ function SidebarContent({
     const handleLogout = async () => {
         try {
             const { refreshToken } = useAuth.getState();
-            await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/logout`, {
+            await fetch(`${API_BASE}/api/auth/logout`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken }),

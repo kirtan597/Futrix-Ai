@@ -8,13 +8,20 @@ interface SkillRadarProps {
 }
 
 // Build dummy proficiency for existing skills (detected = high) vs gaps (low)
+// Deterministic hash so values don't re-randomize on every render
+function hashNum(s: string, min: number, range: number): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffff;
+    return min + (h % range);
+}
+
 function buildData(skills: string[], gaps: string[]) {
     const items: { subject: string; value: number; fullMark: number }[] = [];
     const show = [...skills.slice(0, 6), ...gaps.slice(0, 3)];
     show.forEach((s) => {
         items.push({
             subject: s.length > 10 ? s.slice(0, 10) + '..' : s,
-            value: skills.includes(s) ? Math.floor(65 + Math.random() * 35) : Math.floor(10 + Math.random() * 30),
+            value: skills.includes(s) ? hashNum(s, 65, 35) : hashNum(s, 10, 30),
             fullMark: 100,
         });
     });

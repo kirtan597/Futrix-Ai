@@ -150,7 +150,8 @@ export default function CareerPath() {
     useEffect(() => {
         const stored = localStorage.getItem('analysisResult');
         if (stored) { try { setData(JSON.parse(stored)); } catch { /* */ } }
-        setTimeout(() => setMounted(true), 80);
+        const t = setTimeout(() => setMounted(true), 80);
+        return () => clearTimeout(t);
     }, []);
 
     if (!data) {

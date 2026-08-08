@@ -7,17 +7,22 @@ interface FunnelBarProps {
     gapSkills: string[];
 }
 
+function hashNum(s: string, min: number, range: number): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffff;
+    return min + (h % range);
+}
+
 export default function FunnelBar({ skills, gapSkills }: FunnelBarProps) {
-    // Skill priority score: detected = 100, gap = randomised lower value
     const data = [
         ...skills.slice(0, 5).map((s) => ({
             name: s.length > 9 ? s.slice(0, 9) + '..' : s,
-            value: Math.floor(60 + Math.random() * 40),
+            value: hashNum(s, 60, 40),
             type: 'have' as const,
         })),
         ...gapSkills.slice(0, 4).map((g) => ({
             name: g.length > 9 ? g.slice(0, 9) + '..' : g,
-            value: Math.floor(10 + Math.random() * 30),
+            value: hashNum(g, 10, 30),
             type: 'gap' as const,
         })),
     ].sort((a, b) => b.value - a.value);

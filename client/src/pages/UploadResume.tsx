@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/apiService';
 import { useDropzone } from 'react-dropzone';
@@ -18,6 +18,7 @@ import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import EastIcon from '@mui/icons-material/East';
+import { extractResumeText } from '../services/resumeParser';
 
 const SAMPLE_RESUME = `Software Engineer with 3 years of experience.
 
@@ -57,22 +58,23 @@ function Panel({ children, sx = {} }: { children: React.ReactNode; sx?: object }
     );
 }
 
+const ANALYZING_STEPS = [
+    'Waking up AI engine...',
+    'Parsing resume...',
+    'Extracting skills...',
+    'Detecting gaps...',
+    'Scoring readiness...',
+    'Building roadmap...',
+];
+
 // ─── Analysis loading overlay ─────────────────────────────────────────────────
 function AnalyzingOverlay({ visible }: { visible: boolean }) {
-    const steps = [
-        'Waking up AI engine...',
-        'Parsing resume...',
-        'Extracting skills...',
-        'Detecting gaps...',
-        'Scoring readiness...',
-        'Building roadmap...',
-    ];
     const [step, setStep] = React.useState(0);
     const [elapsed, setElapsed] = React.useState(0);
 
     React.useEffect(() => {
         if (!visible) { setStep(0); setElapsed(0); return; }
-        const stepTimer = setInterval(() => setStep(prev => Math.min(prev + 1, steps.length - 1)), 5000);
+        const stepTimer = setInterval(() => setStep(prev => Math.min(prev + 1, ANALYZING_STEPS.length - 1)), 5000);
         const secTimer  = setInterval(() => setElapsed(prev => prev + 1), 1000);
         return () => { clearInterval(stepTimer); clearInterval(secTimer); };
     }, [visible]);
@@ -103,7 +105,7 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
                     Analyzing with AI
                 </Typography>
                 <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem', mb: 0.5 }}>
-                    {steps[step]}
+                    {ANALYZING_STEPS[step]}
                 </Typography>
                 {isSlow && (
                     <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', mb: 2 }}>
@@ -133,6 +135,7 @@ export default function UploadResume() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     // ── Dropzone ──
     const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -248,14 +251,35 @@ export default function UploadResume() {
                                         Resume Text
                                     </Typography>
                                     <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".txt,text/plain"
+                                            style={{ display: 'none' }}
+                                            onChange={async (ev) => {
+                                                const f = ev.target.files?.[0];
+                                                if (!f) return;
+                                                setLoading(true);
+                                                setError('');
+                                                try {
+                                                    const text = await extractResumeText(f);
+                                                    setResumeText(text);
+                                                } catch (err: any) {
+                                                    setError(err?.message || 'Failed to read file');
+                                                } finally {
+                                                    setLoading(false);
+                                                    ev.currentTarget.value = '';
+                                                }
+                                            }}
+                                        />
                                         <Button
                                             variant="outlined"
                                             size="small"
-                                            onClick={() => setResumeText(SAMPLE_RESUME)}
-                                            startIcon={<AutoAwesomeOutlinedIcon sx={{ fontSize: '14px !important' }} />}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            startIcon={<CloudUploadOutlinedIcon sx={{ fontSize: '14px !important' }} />}
                                             sx={{ fontSize: '0.75rem', borderRadius: '8px', px: 1.5 }}
                                         >
-                                            Sample
+                                            Upload File
                                         </Button>
                                         <Button
                                             variant="outlined"

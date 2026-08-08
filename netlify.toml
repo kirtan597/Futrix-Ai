@@ -8,6 +8,12 @@
   VITE_API_URL = "https://futrix-node-api.onrender.com"
   VITE_GOOGLE_CLIENT_ID = "424357134168-gtnpk168sp23oopec177581sb62vs6o0.apps.googleusercontent.com"
 
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
+
 # SPA routing — send all routes to index.html
 [[redirects]]
   from   = "/*"

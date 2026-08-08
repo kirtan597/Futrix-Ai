@@ -97,7 +97,8 @@ export default function History() {
                 })
                 .catch(() => { /* fall back to mock */ });
         }
-        setTimeout(() => setMounted(true), 80);
+        const t = setTimeout(() => setMounted(true), 80);
+        return () => clearTimeout(t);
     }, [email]);
 
     // Prefer real API history; fall back to mock if empty
