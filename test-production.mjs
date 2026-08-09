@@ -73,12 +73,14 @@ async function run() {
     t("Error field present",          !!nf.body.error);
 
     // ── 4. Input Validation ───────────────────────────────────────────────────
+    // NOTE: We only make 1 login call here to preserve rate limit budget for section 5.
     console.log("\n[4] INPUT VALIDATION");
     const badEmail  = await req(`${API}/api/login`, { method: "POST", body: '{"email":"notvalid"}' });
     t("Bad email → 400",              badEmail.status === 400);
 
-    const noEmail   = await req(`${API}/api/login`, { method: "POST", body: '{}' });
-    t("Empty body → 400",             noEmail.status === 400);
+    // Use refresh endpoint to test empty body (doesn't consume login rate limit)
+    const emptyRefresh = await req(`${API}/api/auth/refresh`, { method: "POST", body: '{}' });
+    t("Empty refresh body → 401",     emptyRefresh.status === 401);
 
     const noCredential = await req(`${API}/api/auth/google`, { method: "POST", body: '{}' });
     t("Google: missing credential → 400", noCredential.status === 400);
