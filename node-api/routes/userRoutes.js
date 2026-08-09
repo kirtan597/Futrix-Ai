@@ -17,7 +17,7 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 // ─── POST /api/login ──────────────────────────────────────────────────────────
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-router.post("/login", rateLimiter(5, 15 * 60 * 1000), async (req, res) => {
+router.post("/login", rateLimiter(10, 15 * 60 * 1000), async (req, res) => {
     const { email } = req.body;
     if (!email || !EMAIL_REGEX.test(email)) {
         return res.status(400).json({ error: "A valid email is required." });
