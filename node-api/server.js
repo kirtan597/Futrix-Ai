@@ -108,6 +108,7 @@ app.use('/{*path}', (req, res) => {
             'POST /api/login',
             'POST /api/auth/google',
             'POST /api/auth/refresh',
+            'POST /api/auth/logout',
             'GET /api/auth/verify',
             'POST /api/upload-resume',
             'GET /api/history',
