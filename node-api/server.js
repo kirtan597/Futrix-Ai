@@ -86,7 +86,7 @@ app.get("/health", (req, res) => {
         uptime: process.uptime(),
         mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
         environment: process.env.NODE_ENV || "development",
-        version: "2.0.0",
+        version: "2.0.1",
         services: {
             auth: "operational",
             analysis: "operational",
