@@ -25,6 +25,15 @@ export const MONO = {
 };
 
 const theme = createTheme({
+    breakpoints: {
+        values: {
+            xs: 0,
+            sm: 600,
+            md: 960,
+            lg: 1280,
+            xl: 1920,
+        },
+    },
     palette: {
         mode: 'dark',
         primary: {
@@ -55,13 +64,50 @@ const theme = createTheme({
     },
     typography: {
         fontFamily: '"Inter", "Roboto", "Helvetica Neue", Arial, sans-serif',
-        h1: { fontWeight: 800, letterSpacing: '-0.04em' },
-        h2: { fontWeight: 700, letterSpacing: '-0.03em' },
-        h3: { fontWeight: 700, letterSpacing: '-0.025em' },
-        h4: { fontWeight: 700, letterSpacing: '-0.02em' },
-        h5: { fontWeight: 600, letterSpacing: '-0.01em' },
-        h6: { fontWeight: 600 },
+        h1: { 
+            fontWeight: 800, 
+            letterSpacing: '-0.04em',
+            fontSize: 'clamp(2rem, 5vw, 3.5rem)', // Mobile responsive
+        },
+        h2: { 
+            fontWeight: 700, 
+            letterSpacing: '-0.03em',
+            fontSize: 'clamp(1.75rem, 4vw, 3rem)',
+        },
+        h3: { 
+            fontWeight: 700, 
+            letterSpacing: '-0.025em',
+            fontSize: 'clamp(1.5rem, 3.5vw, 2.5rem)',
+        },
+        h4: { 
+            fontWeight: 700, 
+            letterSpacing: '-0.02em',
+            fontSize: 'clamp(1.25rem, 3vw, 2rem)',
+        },
+        h5: { 
+            fontWeight: 600, 
+            letterSpacing: '-0.01em',
+            fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)',
+        },
+        h6: { 
+            fontWeight: 600,
+            fontSize: 'clamp(1rem, 2vw, 1.25rem)',
+        },
         subtitle1: { fontWeight: 500, letterSpacing: '-0.005em' },
+        body1: { 
+            fontSize: '1rem',
+            lineHeight: 1.7,
+            '@media (max-width:600px)': {
+                fontSize: '0.9375rem', // 15px on mobile
+            },
+        },
+        body2: { 
+            fontSize: '0.875rem',
+            lineHeight: 1.6,
+            '@media (max-width:600px)': {
+                fontSize: '0.8125rem', // 13px on mobile
+            },
+        },
         button: {
             fontWeight: 600,
             letterSpacing: '0.01em',
@@ -82,10 +128,24 @@ const theme = createTheme({
     components: {
         MuiCssBaseline: {
             styleOverrides: {
+                html: {
+                    // Prevent text size adjust on orientation change
+                    WebkitTextSizeAdjust: '100%',
+                    // Better font rendering
+                    MozOsxFontSmoothing: 'grayscale',
+                    WebkitFontSmoothing: 'antialiased',
+                },
                 body: {
                     background: '#0a0a0a',
                     color: '#ffffff',
+                    // Prevent overscroll bounce on iOS
+                    overscrollBehavior: 'none',
                 },
+                // Mobile viewport height fix
+                '#root': {
+                    minHeight: '-webkit-fill-available',
+                },
+                // Improved scrollbars
                 '*::-webkit-scrollbar': { width: '5px', height: '5px' },
                 '*::-webkit-scrollbar-track': { background: 'transparent' },
                 '*::-webkit-scrollbar-thumb': {
@@ -94,6 +154,13 @@ const theme = createTheme({
                 },
                 '*::-webkit-scrollbar-thumb:hover': {
                     background: 'rgba(255,255,255,0.22)',
+                },
+                // Disable selection on UI elements (better mobile feel)
+                '.no-select': {
+                    WebkitUserSelect: 'none',
+                    MozUserSelect: 'none',
+                    msUserSelect: 'none',
+                    userSelect: 'none',
                 },
             },
         },
@@ -106,6 +173,34 @@ const theme = createTheme({
                     fontSize: '0.875rem',
                     fontWeight: 600,
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    // Mobile: Larger touch targets
+                    '@media (max-width:600px)': {
+                        padding: '12px 24px',
+                        minHeight: 44, // iOS minimum touch target
+                        fontSize: '0.9375rem',
+                    },
+                    // Disable hover effects on touch devices
+                    '@media (hover: none)': {
+                        '&:hover': {
+                            transform: 'none',
+                        },
+                    },
+                },
+                sizeSmall: {
+                    padding: '6px 16px',
+                    fontSize: '0.8125rem',
+                    '@media (max-width:600px)': {
+                        padding: '8px 18px',
+                        minHeight: 36,
+                    },
+                },
+                sizeLarge: {
+                    padding: '14px 28px',
+                    fontSize: '0.9375rem',
+                    '@media (max-width:600px)': {
+                        padding: '16px 32px',
+                        minHeight: 52,
+                    },
                 },
                 containedPrimary: {
                     background: '#ffffff',
@@ -138,6 +233,16 @@ const theme = createTheme({
                 },
             },
         },
+        MuiIconButton: {
+            styleOverrides: {
+                root: {
+                    // Larger touch targets on mobile
+                    '@media (max-width:600px)': {
+                        padding: 10,
+                    },
+                },
+            },
+        },
         MuiCard: {
             defaultProps: { elevation: 0 },
             styleOverrides: {
@@ -150,6 +255,13 @@ const theme = createTheme({
                         borderColor: 'rgba(255,255,255,0.14)',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                     },
+                    // Disable hover on touch devices
+                    '@media (hover: none)': {
+                        '&:hover': {
+                            transform: 'none',
+                            boxShadow: 'none',
+                        },
+                    },
                 },
             },
         },
@@ -159,10 +271,20 @@ const theme = createTheme({
                     '& .MuiOutlinedInput-root': {
                         borderRadius: 10,
                         background: 'rgba(255,255,255,0.03)',
+                        // Mobile: Larger input fields
+                        '@media (max-width:600px)': {
+                            minHeight: 48,
+                        },
                         '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
                         '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.25)' },
                         '&.Mui-focused fieldset': { borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1.5 },
-                        '& input, & textarea': { color: '#ffffff' },
+                        '& input, & textarea': { 
+                            color: '#ffffff',
+                            // Mobile: Better font size
+                            '@media (max-width:600px)': {
+                                fontSize: '16px', // Prevents zoom on iOS
+                            },
+                        },
                     },
                     '& .MuiInputLabel-root': { color: '#737373' },
                     '& .MuiInputLabel-root.Mui-focused': { color: '#ffffff' },
@@ -175,6 +297,11 @@ const theme = createTheme({
                     borderRadius: 7,
                     fontWeight: 600,
                     fontSize: '0.75rem',
+                    // Mobile: Slightly larger chips
+                    '@media (max-width:600px)': {
+                        fontSize: '0.8125rem',
+                        height: 28,
+                    },
                 },
             },
         },
@@ -184,6 +311,10 @@ const theme = createTheme({
                     borderRadius: 99,
                     height: 6,
                     background: 'rgba(255,255,255,0.08)',
+                    // Mobile: Thicker progress bar
+                    '@media (max-width:600px)': {
+                        height: 8,
+                    },
                 },
                 bar: {
                     borderRadius: 99,
@@ -204,7 +335,14 @@ const theme = createTheme({
         },
         MuiAlert: {
             styleOverrides: {
-                root: { borderRadius: 10, fontSize: '0.875rem' },
+                root: { 
+                    borderRadius: 10, 
+                    fontSize: '0.875rem',
+                    // Mobile: Full width and larger
+                    '@media (max-width:600px)': {
+                        fontSize: '0.9375rem',
+                    },
+                },
                 standardError: {
                     background: 'rgba(248,113,113,0.08)',
                     border: '1px solid rgba(248,113,113,0.2)',
@@ -216,7 +354,7 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     borderColor: 'rgba(255,255,255,0.07)',
-                    backgroundColor: 'transparent', // prevent white fill bleed
+                    backgroundColor: 'transparent',
                 },
             },
         },
@@ -227,6 +365,9 @@ const theme = createTheme({
                     border: '1px solid rgba(255,255,255,0.1)',
                     fontSize: '0.78rem',
                     borderRadius: 8,
+                    '@media (max-width:600px)': {
+                        fontSize: '0.8125rem',
+                    },
                 },
             },
         },
@@ -237,6 +378,10 @@ const theme = createTheme({
                     border: '1px solid rgba(255,255,255,0.08)',
                     borderRadius: 12,
                     boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+                    // Mobile: Full width menus
+                    '@media (max-width:600px)': {
+                        maxWidth: 'calc(100vw - 32px)',
+                    },
                 },
             },
         },
@@ -245,10 +390,28 @@ const theme = createTheme({
                 root: {
                     borderRadius: 8,
                     margin: '2px 6px',
+                    minHeight: 40,
+                    // Mobile: Larger menu items
+                    '@media (max-width:600px)': {
+                        minHeight: 48,
+                        fontSize: '0.9375rem',
+                    },
                     '&:hover': { background: 'rgba(255,255,255,0.06)' },
                     '&.Mui-selected': {
                         background: 'rgba(255,255,255,0.08)',
                         '&:hover': { background: 'rgba(255,255,255,0.1)' },
+                    },
+                },
+            },
+        },
+        MuiDialog: {
+            styleOverrides: {
+                paper: {
+                    // Mobile: Full screen or near-full screen dialogs
+                    '@media (max-width:600px)': {
+                        margin: 16,
+                        maxHeight: 'calc(100% - 32px)',
+                        width: 'calc(100% - 32px)',
                     },
                 },
             },

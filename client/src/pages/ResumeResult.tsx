@@ -285,14 +285,16 @@ export default function ResumeResult() {
                                 }}>
                                     <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, color: i === 0 ? '#fff' : 'rgba(255,255,255,0.3)' }}>{i + 1}</Typography>
                                 </Box>
-                                <Typography sx={{
-                                    fontSize: '0.82rem',
-                                    color: i === 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.38)',
-                                    lineHeight: 1.6, flex: 1,
-                                }}>
-                                    {step}
-                                    {i === 0 && <Chip label="Next" size="small" sx={{ ml: 1, height: 17, fontSize: '0.62rem', fontWeight: 700, background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }} />}
-                                </Typography>
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography sx={{
+                                        fontSize: '0.82rem',
+                                        color: i === 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.38)',
+                                        lineHeight: 1.6,
+                                    }}>
+                                        {step}
+                                    </Typography>
+                                    {i === 0 && <Chip label="Next" size="small" sx={{ mt: 0.5, height: 17, fontSize: '0.62rem', fontWeight: 700, background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }} />}
+                                </Box>
                             </Box>
                         ))}
                     </Box>
