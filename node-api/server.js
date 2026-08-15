@@ -5,7 +5,24 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const app = express();
 
-// CORS — allow localhost dev + any deployed frontend URL
+// ─── Production Logging Setup ──────────────────────────────────────────────────
+const isDev = process.env.NODE_ENV !== 'production';
+const logWithTimestamp = (level, msg, data = '') => {
+    const timestamp = new Date().toISOString();
+    const logMsg = `[${timestamp}] [${level}] ${msg}`;
+    if (isDev) {
+        console.log(logMsg, data);
+    } else {
+        // Production: structured logging
+        console.log(JSON.stringify({ timestamp, level, message: msg, data }));
+    }
+};
+
+const logError = (msg, err) => logWithTimestamp('ERROR', msg, err?.message || err);
+const logInfo = (msg, data) => logWithTimestamp('INFO', msg, data);
+const logWarn = (msg, data) => logWithTimestamp('WARN', msg, data);
+
+// ─── CORS Configuration ────────────────────────────────────────────────────────
 const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
