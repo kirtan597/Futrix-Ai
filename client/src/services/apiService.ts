@@ -117,6 +117,16 @@ class ApiService {
                 window.location.href = '/login';
                 throw new Error('401');
             }
+            if (res.status === 503) {
+                throw new Error('503 - Service temporarily unavailable');
+            }
+            if (res.status === 500) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || 'Server error');
+            }
+            if (res.status === 429) {
+                throw new Error('429 - Rate limit exceeded');
+            }
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}));
                 throw new Error(body.message || body.error || String(res.status));
