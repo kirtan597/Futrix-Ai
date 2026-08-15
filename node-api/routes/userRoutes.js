@@ -9,7 +9,7 @@ const auth     = require("../middleware/auth");
 const rateLimiter = require("../middleware/rateLimiter");
 const { generateTokens, verifyRefreshToken } = require("../utils/authUtils");
 
-const PYTHON_URL  = process.env.PYTHON_URL  || "http://localhost:8000";
+const PYTHON_URL  = (process.env.PYTHON_URL  || "http://localhost:8000").replace(/\/$/, '');
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -260,40 +260,83 @@ router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000), async (req, 
         return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
     }
     try {
-        // Wake up Python AI (Render free tier cold start ~30s)
-        try { await axios.get(`${PYTHON_URL}/`, { timeout: 15_000 }); } catch (_) {}
+        // Validate Python URL is configured
+        if (!PYTHON_URL || PYTHON_URL === 'http://localhost:8000') {
+            console.error("[upload-resume] ❌ PYTHON_URL not configured for production");
+            return res.status(503).json({ error: "AI service is not properly configured. Please try again later." });
+        }
 
-        // Call Python AI engine
-        const aiRes = await axios.post(`${PYTHON_URL}/analyze`, { resume: text }, { timeout: 60_000 });
+        // Wake up Python AI (Render free tier cold start ~30s)
+        try { 
+            await axios.get(`${PYTHON_URL}/`, { timeout: 15_000 }); 
+        } catch (wakeErr) {
+            console.warn("[upload-resume] ⚠️ AI wake-up failed:", wakeErr.message);
+            // Continue anyway - service might still be up
+        }
+
+        // Call Python AI engine with better error handling
+        let aiRes;
+        try {
+            aiRes = await axios.post(`${PYTHON_URL}/analyze`, { resume: text }, { timeout: 60_000 });
+        } catch (aiErr) {
+            console.error("[upload-resume] ❌ AI service error:", aiErr.message);
+            
+            if (aiErr.code === "ECONNREFUSED") {
+                return res.status(503).json({ error: "AI engine is offline. Please try again in 30 seconds." });
+            }
+            if (aiErr.code === "ECONNABORTED" || aiErr.message?.includes("timeout")) {
+                return res.status(503).json({ error: "AI engine is still waking up. Please wait 30 seconds and try again." });
+            }
+            if (aiErr.response?.status === 503) {
+                return res.status(503).json({ error: "AI engine is temporarily unavailable. Please wait and try again." });
+            }
+            if (aiErr.response?.data?.detail) {
+                return res.status(400).json({ error: aiErr.response.data.detail });
+            }
+            
+            // If we got here, it's an unexpected error
+            console.error("[upload-resume] Unexpected AI error:", {
+                status: aiErr.response?.status,
+                message: aiErr.message,
+                data: aiErr.response?.data,
+            });
+            
+            return res.status(503).json({ 
+                error: "Analysis service is temporarily unavailable. Please try again in a moment." 
+            });
+        }
+
         const aiData = aiRes.data;
 
-        // Persist to MongoDB
-        const saved = await Analysis.create({
-            email:           email || req.user?.email,
-            resumeText:      text,
-            skills:          aiData.skills          || [],
-            gap_skills:      aiData.gap_skills       || [],
-            readiness_score: aiData.readiness_score  || 0,
-            roadmap:         aiData.roadmap          || [],
-            score_breakdown: aiData.score_breakdown  || null,
-            career_paths:    aiData.career_paths     || [],
-        });
+        // Persist to MongoDB with error handling
+        let saved;
+        try {
+            saved = await Analysis.create({
+                email:           email || req.user?.email,
+                resumeText:      text,
+                skills:          aiData.skills          || [],
+                gap_skills:      aiData.gap_skills       || [],
+                readiness_score: aiData.readiness_score  || 0,
+                roadmap:         aiData.roadmap          || [],
+                score_breakdown: aiData.score_breakdown  || null,
+                career_paths:    aiData.career_paths     || [],
+            });
+        } catch (dbErr) {
+            console.error("[upload-resume] ❌ Database error:", dbErr.message);
+            
+            if (dbErr.name === "ValidationError") {
+                return res.status(400).json({ error: "Invalid data format", detail: dbErr.message });
+            }
+            if (dbErr.name === "MongoNetworkError" || dbErr.message?.includes("ECONNREFUSED")) {
+                return res.status(503).json({ error: "Database is temporarily unavailable. Please try again." });
+            }
+            
+            return res.status(500).json({ error: "Failed to save analysis. Please try again.", detail: dbErr.message });
+        }
 
         res.json({ ...aiData, _id: saved._id });
     } catch (err) {
-        console.error("[upload-resume]", err.message);
-        if (err.code === "ECONNREFUSED") {
-            return res.status(503).json({ error: "AI engine is offline. Please try again in 30 seconds." });
-        }
-        if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
-            return res.status(503).json({ error: "AI engine is still waking up. Please wait 30 seconds and try again." });
-        }
-        if (err.response?.data?.detail) {
-            return res.status(400).json({ error: err.response.data.detail });
-        }
-        if (err.name === "ValidationError" || err.name === "MongoServerError") {
-            return res.status(500).json({ error: "Failed to save analysis. Please try again.", detail: err.message });
-        }
+        console.error("[upload-resume] Unexpected error:", err.message, err.stack);
         res.status(500).json({ error: "Analysis failed. Please try again.", detail: err.message });
     }
 });

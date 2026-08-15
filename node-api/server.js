@@ -80,6 +80,9 @@ app.use("/api", require("./routes/userRoutes"));
 
 // Enhanced health check endpoint
 app.get("/health", (req, res) => {
+    const pythonUrl = (process.env.PYTHON_URL || "http://localhost:8000").replace(/\/$/, '');
+    const isPythonConfigured = pythonUrl !== 'http://localhost:8000' && process.env.NODE_ENV !== 'development';
+    
     const health = {
         status: "ok",
         timestamp: new Date().toISOString(),
@@ -90,11 +93,12 @@ app.get("/health", (req, res) => {
         services: {
             auth: "operational",
             analysis: "operational",
-            database: mongoose.connection.readyState === 1 ? "operational" : "down"
+            database: mongoose.connection.readyState === 1 ? "operational" : "down",
+            python_ai: isPythonConfigured ? "configured" : "not-configured"
         }
     };
     
-    const statusCode = mongoose.connection.readyState === 1 ? 200 : 503;
+    const statusCode = (mongoose.connection.readyState === 1 && isPythonConfigured) ? 200 : 503;
     res.status(statusCode).json(health);
 });
 
