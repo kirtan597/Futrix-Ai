@@ -254,15 +254,15 @@ router.get("/auth/verify", auth, async (req, res) => {
 });
 
 // ─── Helper: Retry logic for AI service ────────────────────────────────────────
-async function callAIServiceWithRetry(text, maxRetries = 3, initialDelay = 2000) {
+async function callAIServiceWithRetry(text, maxRetries = 5, initialDelay = 500) {
     let lastError = null;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             console.log(`[AI-Service] Attempt ${attempt}/${maxRetries} to call AI engine`);
             
-            // Longer timeout for first call (cold start) vs retries
-            const timeout = attempt === 1 ? 90_000 : 60_000;
+            // Adaptive timeout: longer on first attempt for cold starts
+            const timeout = attempt === 1 ? 120_000 : 60_000;
             
             const aiRes = await axios.post(
                 `${PYTHON_URL}/analyze`,
@@ -291,10 +291,10 @@ async function callAIServiceWithRetry(text, maxRetries = 3, initialDelay = 2000)
                 throw err;
             }
             
-            // Calculate backoff delay
+            // Calculate exponential backoff delay
             if (attempt < maxRetries) {
-                const delay = initialDelay * Math.pow(2, attempt - 1); // Exponential backoff
-                console.log(`[AI-Service] Waiting ${delay}ms before retry...`);
+                const delay = initialDelay * Math.pow(2, attempt - 1); // Exponential backoff: 500ms, 1s, 2s, 4s, 8s
+                console.log(`[AI-Service] Waiting ${delay}ms before retry (attempt ${attempt + 1}/${maxRetries})...`);
                 await new Promise(r => setTimeout(r, delay));
             }
         }

@@ -110,7 +110,7 @@ class ApiService {
         // For upload-resume, implement intelligent retry with exponential backoff
         const isUploadResume = endpoint.includes('upload-resume');
         const maxRetries = isUploadResume ? 5 : 1;
-        const initialDelay = isUploadResume ? 3000 : 0; // 3 seconds initial delay for cold starts
+        const initialDelay = isUploadResume ? 500 : 0; // 500ms initial delay
         
         let lastError: Error | null = null;
         
@@ -147,9 +147,10 @@ class ApiService {
                     const error = new Error(body.message || 'Service temporarily unavailable');
                     
                     if (isUploadResume && attempt < maxRetries) {
-                        console.log(`[API] Attempt ${attempt}/${maxRetries} failed with 503, retrying in ${initialDelay * attempt}ms...`);
+                        const delayMs = initialDelay * Math.pow(2, attempt - 1);
+                        console.log(`[API] Attempt ${attempt}/${maxRetries} failed with 503, retrying in ${delayMs}ms...`);
                         lastError = error;
-                        await new Promise(r => setTimeout(r, initialDelay * attempt));
+                        await new Promise(r => setTimeout(r, delayMs));
                         continue; // Retry
                     }
                     throw error;
