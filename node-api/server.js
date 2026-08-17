@@ -4,6 +4,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const crypto = require("crypto"); // Fix: explicit crypto import for Node 18
+const { startWarmer } = require("./utils/serviceWarmer");
 
 const app = express();
 
@@ -158,4 +159,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Node API running on port ${PORT}`);
     console.log(`   Health check: http://localhost:${PORT}/health`);
     console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+    
+    // Start service warmer to prevent cold starts
+    startWarmer();});

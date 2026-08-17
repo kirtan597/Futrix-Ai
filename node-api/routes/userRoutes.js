@@ -253,6 +253,57 @@ router.get("/auth/verify", auth, async (req, res) => {
     }
 });
 
+// ─── Helper: Retry logic for AI service ────────────────────────────────────────
+async function callAIServiceWithRetry(text, maxRetries = 3, initialDelay = 2000) {
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`[AI-Service] Attempt ${attempt}/${maxRetries} to call AI engine`);
+            
+            // Longer timeout for first call (cold start) vs retries
+            const timeout = attempt === 1 ? 90_000 : 60_000;
+            
+            const aiRes = await axios.post(
+                `${PYTHON_URL}/analyze`,
+                { resume: text },
+                { 
+                    timeout,
+                    headers: {
+                        'X-Request-Attempt': String(attempt),
+                        'User-Agent': 'Futrix-Node-API/1.0'
+                    }
+                }
+            );
+            
+            console.log(`[AI-Service] ✅ Success on attempt ${attempt}`);
+            return aiRes.data;
+        } catch (err) {
+            lastError = err;
+            const errorType = err.code || err.response?.status || 'UNKNOWN';
+            const duration = err.config?.timeout || 0;
+            
+            console.error(`[AI-Service] ❌ Attempt ${attempt} failed: ${errorType} (timeout: ${duration}ms)`);
+            
+            // Don't retry on client errors (4xx)
+            if (err.response?.status && err.response.status < 500) {
+                console.error(`[AI-Service] Client error ${err.response.status} - not retrying`);
+                throw err;
+            }
+            
+            // Calculate backoff delay
+            if (attempt < maxRetries) {
+                const delay = initialDelay * Math.pow(2, attempt - 1); // Exponential backoff
+                console.log(`[AI-Service] Waiting ${delay}ms before retry...`);
+                await new Promise(r => setTimeout(r, delay));
+            }
+        }
+    }
+    
+    // All retries exhausted
+    throw lastError;
+}
+
 // ─── POST /api/upload-resume ──────────────────────────────────────────────────
 router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req, res) => {
     const { text, email } = req.body;
@@ -266,47 +317,82 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
             return res.status(503).json({ error: "AI service is not properly configured. Please try again later." });
         }
 
-        // Wake up Python AI (Render free tier cold start ~30s)
+        // Try to wake up Python AI with timeout
+        console.log("[upload-resume] 🔥 Warming up AI service...");
         try { 
-            await axios.get(`${PYTHON_URL}/`, { timeout: 15_000 }); 
+            await axios.get(`${PYTHON_URL}/`, { 
+                timeout: 5_000,
+                headers: { 'User-Agent': 'Futrix-Warmer/1.0' }
+            }); 
+            console.log("[upload-resume] ✅ AI service is warm");
         } catch (wakeErr) {
-            console.warn("[upload-resume] ⚠️ AI wake-up failed:", wakeErr.message);
-            // Continue anyway - service might still be up
+            console.warn("[upload-resume] ⚠️ AI service may be cold starting (wake-up attempt failed)");
+            // Continue - service might still respond to main request
         }
 
-        // Call Python AI engine with better error handling
-        let aiRes;
+        // Call Python AI engine with intelligent retry
+        console.log("[upload-resume] 📊 Calling AI analysis service...");
+        let aiData;
         try {
-            aiRes = await axios.post(`${PYTHON_URL}/analyze`, { resume: text }, { timeout: 60_000 });
+            aiData = await callAIServiceWithRetry(text, 3, 1000);
         } catch (aiErr) {
-            console.error("[upload-resume] ❌ AI service error:", aiErr.message);
+            console.error("[upload-resume] ❌ AI service error after retries:", aiErr.message);
             
+            // Provide specific error messages based on error type
             if (aiErr.code === "ECONNREFUSED") {
-                return res.status(503).json({ error: "AI engine is offline. Please try again in 30 seconds." });
+                return res.status(503).json({ 
+                    error: "AI engine is offline",
+                    message: "The analysis service is temporarily down. Please try again in 30 seconds.",
+                    retryAfter: 30
+                });
             }
             if (aiErr.code === "ECONNABORTED" || aiErr.message?.includes("timeout")) {
-                return res.status(503).json({ error: "AI engine is still waking up. Please wait 30 seconds and try again." });
+                return res.status(503).json({ 
+                    error: "Request timeout",
+                    message: "The AI engine is processing requests slowly. This is normal on the free tier. Please wait 30-60 seconds and try again.",
+                    retryAfter: 60
+                });
             }
             if (aiErr.response?.status === 503) {
-                return res.status(503).json({ error: "AI engine is temporarily unavailable. Please wait and try again." });
+                return res.status(503).json({ 
+                    error: "Service unavailable",
+                    message: "The AI engine is temporarily overloaded. Please wait a moment and try again.",
+                    retryAfter: 30
+                });
+            }
+            if (aiErr.response?.status === 504 || aiErr.response?.status === 502) {
+                return res.status(503).json({ 
+                    error: "Gateway timeout",
+                    message: "The request took too long to process. This is normal on the free tier when service is cold-starting. Please wait 60 seconds and try again.",
+                    retryAfter: 60
+                });
             }
             if (aiErr.response?.data?.detail) {
                 return res.status(400).json({ error: aiErr.response.data.detail });
             }
             
-            // If we got here, it's an unexpected error
+            // Generic service error
             console.error("[upload-resume] Unexpected AI error:", {
                 status: aiErr.response?.status,
                 message: aiErr.message,
-                data: aiErr.response?.data,
+                code: aiErr.code,
             });
             
             return res.status(503).json({ 
-                error: "Analysis service is temporarily unavailable. Please try again in a moment." 
+                error: "Analysis temporarily unavailable",
+                message: "Please wait 30 seconds and try again. On the free tier, the AI engine may take time to start.",
+                retryAfter: 30
             });
         }
 
-        const aiData = aiRes.data;
+        // Validate AI response
+        if (!aiData || typeof aiData !== 'object') {
+            console.error("[upload-resume] ❌ Invalid AI response format");
+            return res.status(500).json({ 
+                error: "Invalid response from AI service",
+                message: "The AI service returned an unexpected response format. Please try again."
+            });
+        }
 
         // Persist to MongoDB with error handling
         let saved;
@@ -321,6 +407,7 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
                 score_breakdown: aiData.score_breakdown  || null,
                 career_paths:    aiData.career_paths     || [],
             });
+            console.log("[upload-resume] ✅ Analysis saved successfully");
         } catch (dbErr) {
             console.error("[upload-resume] ❌ Database error:", dbErr.message);
             

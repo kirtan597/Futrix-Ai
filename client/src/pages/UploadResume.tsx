@@ -72,15 +72,17 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
 
     if (!visible) return null;
 
-    const isSlow = elapsed > 15;
+    const isVerySlow = elapsed > 30;
+    const isSlow = elapsed > 15 && elapsed <= 30;
 
     return (
         <Box sx={{
             position: 'fixed', inset: 0, zIndex: 999,
-            background: 'rgba(10,10,10,0.92)',
+            background: 'rgba(10,10,10,0.95)',
             backdropFilter: 'blur(12px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexDirection: 'column', gap: 3,
+            px: { xs: 2, md: 4 },
         }}>
             <Box sx={{
                 width: 64, height: 64, borderRadius: '18px',
@@ -91,22 +93,49 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
             }}>
                 <AutoAwesomeOutlinedIcon sx={{ fontSize: 28, color: 'rgba(255,255,255,0.7)' }} />
             </Box>
-            <Box sx={{ textAlign: 'center', px: 3 }}>
-                <Typography sx={{ fontWeight: 700, color: '#fff', fontSize: '1.1rem', letterSpacing: '-0.02em', mb: 1 }}>
+            <Box sx={{ textAlign: 'center', px: 3, maxWidth: 400 }}>
+                <Typography sx={{ fontWeight: 700, color: '#fff', fontSize: 'clamp(1rem, 3vw, 1.1rem)', letterSpacing: '-0.02em', mb: 1 }}>
                     Analyzing with AI
                 </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem', mb: 0.5 }}>
+                <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.8rem, 2.5vw, 0.85rem)', mb: 0.5 }}>
                     {ANALYZING_STEPS[step]}
                 </Typography>
-                {isSlow && (
-                    <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', mb: 2 }}>
-                        AI engine is waking up on free tier — this can take up to 60s on first request
-                    </Typography>
+                
+                {isVerySlow && (
+                    <Box sx={{ 
+                        mt: 2, p: 1.5, 
+                        background: 'rgba(255,193,7,0.08)',
+                        border: '1px solid rgba(255,193,7,0.2)',
+                        borderRadius: '10px',
+                        mb: 2
+                    }}>
+                        <Typography sx={{ color: 'rgba(255,193,7,0.9)', fontSize: '0.82rem', fontWeight: 600, mb: 0.5 }}>
+                            ⏱️ Still processing...
+                        </Typography>
+                        <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', lineHeight: 1.6 }}>
+                            The AI engine is on the free tier and may take 60+ seconds to complete. This is normal. Please don't close this page.
+                        </Typography>
+                    </Box>
                 )}
-                <Typography sx={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.72rem', mb: 3 }}>
+                
+                {isSlow && !isVerySlow && (
+                    <Box sx={{ 
+                        mt: 2, p: 1.5, 
+                        background: 'rgba(255,193,7,0.06)',
+                        border: '1px solid rgba(255,193,7,0.15)',
+                        borderRadius: '10px',
+                        mb: 2
+                    }}>
+                        <Typography sx={{ color: 'rgba(255,193,7,0.8)', fontSize: '0.8rem' }}>
+                            ℹ️ Free tier AI engine is starting up. Please wait...
+                        </Typography>
+                    </Box>
+                )}
+                
+                <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', mb: 2 }}>
                     {elapsed}s elapsed
                 </Typography>
-                <Box sx={{ width: 220, mx: 'auto' }}>
+                <Box sx={{ width: '100%', mx: 'auto' }}>
                     <LinearProgress
                         variant="indeterminate"
                         sx={{

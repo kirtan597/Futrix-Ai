@@ -28,12 +28,22 @@ function friendlyError(err: unknown, endpoint: string): string {
         return 'Cannot reach the server. Please check your connection or try again in a moment.';
     }
     if (msg.includes('503') || msg.includes('Service Unavailable')) {
-        return 'The AI engine is waking up (free tier cold start). Please wait 30 seconds and try again.';
+        if (endpoint.includes('upload-resume')) {
+            return 'The AI engine is waking up (free tier cold start). Please wait 30-60 seconds and try again.';
+        }
+        return 'Service temporarily unavailable. Please try again in 30 seconds.';
+    }
+    if (msg.includes('502') || msg.includes('504') || msg.includes('Gateway')) {
+        if (endpoint.includes('upload-resume')) {
+            return 'The request took too long to process. This is normal on the free tier when the AI is cold-starting. Please wait 60 seconds and try again.';
+        }
+        return 'Request timeout. Please try again in 30 seconds.';
     }
     if (msg.includes('500')) {
-        return endpoint.includes('upload-resume')
-            ? 'Analysis failed. The AI engine may be starting up — please wait 30 seconds and try again.'
-            : 'Server error. Please try again.';
+        if (endpoint.includes('upload-resume')) {
+            return 'Analysis failed. The AI engine may be starting up — please wait 30 seconds and try again.';
+        }
+        return 'Server error. Please try again.';
     }
     if (msg.includes('401') || msg.includes('Token Expired')) {
         return 'Your session expired. Please log in again.';
