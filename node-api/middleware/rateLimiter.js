@@ -1,6 +1,6 @@
 /**
  * Simple in-memory rate limiter
- * For production, use Redis-based rate limiting
+ * Tracks by user email (authenticated) or IP (unauthenticated)
  */
 const requestCounts = new Map();
 
@@ -9,9 +9,10 @@ const requestCounts = new Map();
  * @param {number} maxRequests - Maximum requests allowed
  * @param {number} windowMs - Time window in milliseconds
  */
-function rateLimiter(maxRequests = 5, windowMs = 15 * 60 * 1000) {
+function rateLimiter(maxRequests = 20, windowMs = 60 * 60 * 1000) {
     return (req, res, next) => {
-        const identifier = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+        // Use user email if authenticated, otherwise use IP
+        const identifier = req.user?.email || req.user?.id || req.ip || req.connection?.remoteAddress || 'unknown';
         const now = Date.now();
         
         if (!requestCounts.has(identifier)) {
@@ -26,7 +27,7 @@ function rateLimiter(maxRequests = 5, windowMs = 15 * 60 * 1000) {
         if (recentRequests.length >= maxRequests) {
             return res.status(429).json({
                 error: "Too Many Requests",
-                message: `Maximum ${maxRequests} requests per ${windowMs / 60000} minutes. Please try again later.`,
+                message: `Maximum ${maxRequests} requests per ${Math.round(windowMs / 60000)} minutes. Please try again later.`,
                 retryAfter: Math.ceil((recentRequests[0] + windowMs - now) / 1000)
             });
         }

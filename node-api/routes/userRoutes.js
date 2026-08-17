@@ -254,7 +254,7 @@ router.get("/auth/verify", auth, async (req, res) => {
 });
 
 // ─── POST /api/upload-resume ──────────────────────────────────────────────────
-router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000), async (req, res) => {
+router.post("/upload-resume", auth, rateLimiter(20, 60 * 60 * 1000), async (req, res) => {
     const { text, email } = req.body;
     if (!text || text.trim().length < 50) {
         return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
