@@ -3,27 +3,21 @@ require("dotenv").config(); // Must be first before any process.env usage
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const crypto = require("crypto"); // Fix: explicit crypto import for Node 18
 const { startWarmer } = require("./utils/serviceWarmer");
 
 const app = express();
 
 // ─── Production Logging Setup ──────────────────────────────────────────────────
 const isDev = process.env.NODE_ENV !== 'production';
-const logWithTimestamp = (level, msg, data = '') => {
+const logTimestamp = (level, msg, data = '') => {
     const timestamp = new Date().toISOString();
     const logMsg = `[${timestamp}] [${level}] ${msg}`;
     if (isDev) {
         console.log(logMsg, data);
     } else {
-        // Production: structured logging
         console.log(JSON.stringify({ timestamp, level, message: msg, data }));
     }
 };
-
-const logError = (msg, err) => logWithTimestamp('ERROR', msg, err?.message || err);
-const logInfo = (msg, data) => logWithTimestamp('INFO', msg, data);
-const logWarn = (msg, data) => logWithTimestamp('WARN', msg, data);
 
 // ─── CORS Configuration ────────────────────────────────────────────────────────
 const allowedOrigins = [
@@ -95,6 +89,20 @@ async function connectDB() {
 
 connectDB();
 
+// ─── Root endpoint ──────────────────────────────────────────────────────────────
+app.get("/", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        message: "Futrix AI Node API v2.0.1",
+        endpoints: {
+            health: "GET /health",
+            auth: ["POST /api/login", "POST /api/auth/google", "POST /api/auth/refresh", "POST /api/auth/logout", "GET /api/auth/verify"],
+            analysis: ["POST /api/upload-resume", "GET /api/history"],
+            jobs: ["POST /api/jobs/match"]
+        }
+    });
+});
+
 // Routes
 app.use("/api", require("./routes/userRoutes"));
 
@@ -122,12 +130,16 @@ app.get("/health", (req, res) => {
     res.status(statusCode).json(health);
 });
 
-// 404 handler (Express 5 compatible — no wildcard '*')
-app.use('/{*path}', (req, res) => {
+// 404 handler - catch all undefined routes
+app.use((req, res) => {
+    const endpoint = `${req.method} ${req.originalUrl}`;
+    logTimestamp('WARN', `404 Not Found: ${endpoint}`);
     res.status(404).json({
         error: 'Not Found',
         message: `Route ${req.method} ${req.originalUrl} not found`,
+        hint: "Check docs: GET / or GET /health",
         availableRoutes: [
+            'GET /',
             'GET /health',
             'POST /api/login',
             'POST /api/auth/google',
@@ -141,12 +153,17 @@ app.use('/{*path}', (req, res) => {
     });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-    console.error('Global error handler:', err);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+// Global error handler (must be last)
+app.use((err, req, res) => {
+    const endpoint = `${req.method} ${req.originalUrl}`;
+    logTimestamp('ERROR', `Unhandled error in ${endpoint}`, err.message);
+    
+    // Don't expose internal errors in production
+    const message = isDev ? err.message : 'Internal server error';
+    
+    res.status(err.status || 500).json({
+        error: err.name || 'Internal Server Error',
+        message: message
     });
 });
 

@@ -1,51 +1,63 @@
 import { useAuth } from '../store/useAuth';
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
-// Dev  → empty string, Vite proxy forwards /api → localhost:5000
-// Prod → VITE_API_URL must be set in Vercel dashboard
 const API_BASE_URL = import.meta.env.DEV
     ? ''
     : (import.meta.env.VITE_API_URL || 'https://futrix-node-api.onrender.com').replace(/\/$/, '');
 
+console.log('[API] Environment:', import.meta.env.MODE);
+console.log('[API] Base URL:', API_BASE_URL || 'localhost:5000');
+
 // ── JWT decode (local, no HTTP call) ─────────────────────────────────────────
 function isTokenExpired(token: string): boolean {
     try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return Date.now() >= payload.exp * 1000 - 30_000;
-    } catch {
+        if (!token) return true;
+        const parts = token.split('.');
+        if (parts.length !== 3) return true;
+        const payload = JSON.parse(atob(parts[1]));
+        return Date.now() >= payload.exp * 1000 - 30_000; // 30s buffer
+    } catch (err) {
+        console.warn('[API] Token decode error:', err);
         return true;
     }
 }
 
 // ── Friendly error messages ───────────────────────────────────────────────────
 function getErrorMessage(err: unknown): string {
-    return err instanceof Error ? err.message : '';
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'string') return err;
+    return JSON.stringify(err);
 }
 
 function friendlyError(err: unknown, endpoint: string): string {
     const msg = getErrorMessage(err);
+    
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
-        return 'Cannot reach the server. Please check your connection or try again.';
+        return 'Cannot reach server. Check connection.';
     }
-    if (msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('temporarily unavailable')) {
-        return 'Service is temporarily busy. Please try again in a moment.';
+    if (msg.includes('503') || msg.includes('Unavailable') || msg.includes('unavailable')) {
+        return 'Service busy. Try again in a moment.';
     }
     if (msg.includes('502') || msg.includes('504') || msg.includes('Gateway') || msg.includes('timeout')) {
-        return 'Request took too long. Please try again.';
+        return 'Request timeout. Please try again.';
     }
     if (msg.includes('500')) {
-        return 'Server error. Please try again.';
+        return 'Server error. Try again.';
     }
-    if (msg.includes('401') || msg.includes('Token') || msg.includes('Authentication')) {
-        return 'Your session expired. Please log in again.';
+    if (msg.includes('401') || msg.includes('Token') || msg.includes('Auth')) {
+        return 'Session expired. Please log in.';
+    }
+    if (msg.includes('403')) {
+        return 'Access denied.';
     }
     if (msg.includes('429')) {
-        return 'Too many requests. Please wait a moment and try again.';
+        return 'Too many requests. Wait a moment.';
     }
-    if (msg.includes('405') || msg.includes('Method Not Allowed')) {
-        return 'Invalid request. Please try again or contact support.';
+    if (msg.includes('400')) {
+        return 'Invalid request.';
     }
-    return msg || 'Something went wrong. Please try again.';
+    
+    return msg || 'Something went wrong.';
 }
 
 class ApiService {
@@ -59,72 +71,106 @@ class ApiService {
 
     private async refreshAccessToken(): Promise<string> {
         const { refreshToken, setAuth, clearAuth } = useAuth.getState();
+        
         if (!refreshToken) {
             clearAuth();
-            window.location.href = '/login';
-            throw new Error('No refresh token available');
+            throw new Error('No refresh token');
         }
+        
         try {
             const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refreshToken }),
             });
-            if (!res.ok) throw new Error('Token refresh failed');
+            
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || `Refresh failed: ${res.status}`);
+            }
+            
             const data = await res.json();
-            const cur = useAuth.getState();
+            const currentState = useAuth.getState();
+            
             setAuth(data.accessToken, data.refreshToken, {
-                email: cur.email!,
-                name: cur.name || undefined,
-                avatar: cur.avatar || undefined,
+                email: currentState.email!,
+                name: currentState.name || undefined,
+                avatar: currentState.avatar || undefined,
             });
+            
+            console.log('[API] Access token refreshed');
             return data.accessToken;
         } catch (err) {
+            console.error('[API] Token refresh error:', err);
             clearAuth();
-            window.location.href = '/login';
             throw err;
         }
     }
 
     private async getValidAccessToken(): Promise<string> {
-        const { accessToken } = useAuth.getState();
+        const { accessToken, refreshToken } = useAuth.getState();
+        
+        // No token at all
         if (!accessToken) {
+            console.warn('[API] No access token found');
             window.location.href = '/login';
-            throw new Error('No access token');
+            throw new Error('No access token available');
         }
-        if (!isTokenExpired(accessToken)) return accessToken;
-        if (!this.refreshPromise) this.refreshPromise = this.refreshAccessToken();
+        
+        // Token still valid
+        if (!isTokenExpired(accessToken)) {
+            return accessToken;
+        }
+        
+        // Token expired, try to refresh
+        console.log('[API] Access token expired, refreshing...');
+        
+        if (!refreshToken) {
+            console.warn('[API] No refresh token found');
+            window.location.href = '/login';
+            throw new Error('No refresh token available');
+        }
+        
+        // Prevent concurrent refresh attempts
+        if (!this.refreshPromise) {
+            this.refreshPromise = this.refreshAccessToken();
+        }
+        
         try {
-            const token = await this.refreshPromise;
+            const newAccessToken = await this.refreshPromise;
             this.refreshPromise = null;
-            return token;
+            console.log('[API] Token refreshed successfully');
+            return newAccessToken;
         } catch (err) {
             this.refreshPromise = null;
+            console.error('[API] Token refresh failed:', err);
+            window.location.href = '/login';
             throw err;
         }
     }
 
     async request<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
-        
-        // For upload-resume, implement intelligent retry with exponential backoff
         const isUploadResume = endpoint.includes('upload-resume');
         const maxRetries = isUploadResume ? 5 : 1;
-        const initialDelay = isUploadResume ? 500 : 0; // 500ms initial delay
+        const initialDelay = isUploadResume ? 500 : 0;
         
         let lastError: Error | null = null;
         
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
+                // Get valid token
                 let accessToken: string;
                 try {
                     accessToken = await this.getValidAccessToken();
                 } catch (tokenErr) {
-                    // Token fetch failed — redirect to login
+                    console.error('[API] Token error:', tokenErr);
+                    useAuth.getState().clearAuth();
                     window.location.href = '/login';
-                    throw new Error('Authentication failed. Please log in again.');
+                    throw new Error('Auth failed. Redirecting to login.');
                 }
 
+                // Make request
                 const res = await fetch(url, {
                     ...options,
                     headers: {
@@ -134,57 +180,57 @@ class ApiService {
                     },
                 });
 
-                // Handle specific error statuses
+                // Handle 401 immediately
                 if (res.status === 401) {
                     useAuth.getState().clearAuth();
                     window.location.href = '/login';
-                    throw new Error('Your session expired. Please log in again.');
+                    throw new Error('Unauthorized. Redirecting to login.');
                 }
                 
-                // For 503, retry silently on upload-resume
+                // Handle 503 with retry
                 if (res.status === 503) {
                     const body = await res.json().catch(() => ({}));
-                    const error = new Error(body.message || 'Service temporarily unavailable');
+                    const error = new Error(body.message || 'Service unavailable');
                     
                     if (isUploadResume && attempt < maxRetries) {
                         const delayMs = initialDelay * Math.pow(2, attempt - 1);
-                        console.log(`[API] Attempt ${attempt}/${maxRetries} failed with 503, retrying in ${delayMs}ms...`);
+                        console.log(`[API] Retry ${attempt}/${maxRetries} in ${delayMs}ms`);
                         lastError = error;
                         await new Promise(r => setTimeout(r, delayMs));
-                        continue; // Retry
+                        continue;
                     }
                     throw error;
                 }
                 
+                // Handle other errors
                 if (res.status === 500) {
                     const body = await res.json().catch(() => ({}));
                     throw new Error(body.message || 'Server error');
                 }
                 if (res.status === 429) {
-                    throw new Error('429 - Rate limit exceeded');
+                    throw new Error('Rate limit exceeded');
                 }
                 if (!res.ok) {
                     const body = await res.json().catch(() => ({}));
                     throw new Error(body.message || body.error || `HTTP ${res.status}`);
                 }
+                
                 return await res.json();
-            } catch (err: unknown) {
+            } catch (err) {
                 lastError = err instanceof Error ? err : new Error(String(err));
                 
-                // Don't retry on client errors (4xx except 503) or auth errors
-                const errMsg = lastError.message || '';
-                if (errMsg.includes('401') || errMsg.includes('Authentication') || errMsg.includes('Session')) {
+                // Don't retry auth/rate limit errors
+                if (lastError.message.includes('Auth') || lastError.message.includes('Redirecting') || lastError.message.includes('Rate')) {
                     throw lastError;
                 }
                 
-                // For other errors on non-upload-resume, throw immediately
+                // Don't retry on non-upload-resume or last attempt
                 if (!isUploadResume || attempt === maxRetries) {
                     throw lastError;
                 }
             }
         }
         
-        // All retries exhausted
         throw lastError || new Error(friendlyError(lastError, endpoint));
     }
 

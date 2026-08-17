@@ -109,7 +109,9 @@ router.post("/auth/google", rateLimiter(30, 60 * 60 * 1000), async (req, res) =>
             user.name  = name  || user.name;
             user.avatar = picture || user.avatar;
             user.lastLogin = new Date();
-            if (user.loginAttempts > 0) await user.resetLoginAttempts();
+            // Reset login attempts on successful auth
+            user.loginAttempts = 0;
+            if (user.lockUntil) user.lockUntil = undefined;
             await user.save();
         }
 
