@@ -28,8 +28,8 @@ export default function FunnelBar({ skills, gapSkills }: FunnelBarProps) {
     ].sort((a, b) => b.value - a.value);
 
     return (
-        <Box sx={{ width: '100%', minWidth: 200, minHeight: 220, height: 220, display: 'flex', justifyContent: 'center' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={220} style={{ background: 'transparent' }}>
+        <Box sx={{ width: '100%', minWidth: 200, minHeight: 250, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            <ResponsiveContainer width="100%" height={220} aspect={1.2}>
                 <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 4 }} barSize={18}>
                     <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
                     <XAxis
@@ -73,7 +73,7 @@ export default function FunnelBar({ skills, gapSkills }: FunnelBarProps) {
                     </Bar>
                 </BarChart>
             </ResponsiveContainer>
-            <Typography sx={{ textAlign: 'center', fontSize: '0.7rem', color: 'rgba(255,255,255,0.22)', mt: -1 }}>
+            <Typography sx={{ textAlign: 'center', fontSize: '0.7rem', color: 'rgba(255,255,255,0.22)', mt: 0.5 }}>
                 Skill Proficiency Comparison
             </Typography>
         </Box>
