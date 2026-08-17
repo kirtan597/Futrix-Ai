@@ -50,12 +50,12 @@ function Panel({ children, sx = {} }: { children: React.ReactNode; sx?: object }
 }
 
 const ANALYZING_STEPS = [
-    'Waking up AI engine...',
-    'Parsing resume...',
-    'Extracting skills...',
-    'Detecting gaps...',
-    'Scoring readiness...',
-    'Building roadmap...',
+    'Scanning your resume...',
+    'Detecting technologies...',
+    'Analyzing skills...',
+    'Identifying gaps...',
+    'Computing readiness score...',
+    'Generating your roadmap...',
 ];
 
 // ─── Analysis loading overlay ─────────────────────────────────────────────────
@@ -100,37 +100,6 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
                 <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.8rem, 2.5vw, 0.85rem)', mb: 0.5 }}>
                     {ANALYZING_STEPS[step]}
                 </Typography>
-                
-                {isVerySlow && (
-                    <Box sx={{ 
-                        mt: 2, p: 1.5, 
-                        background: 'rgba(255,193,7,0.08)',
-                        border: '1px solid rgba(255,193,7,0.2)',
-                        borderRadius: '10px',
-                        mb: 2
-                    }}>
-                        <Typography sx={{ color: 'rgba(255,193,7,0.9)', fontSize: '0.82rem', fontWeight: 600, mb: 0.5 }}>
-                            ⏱️ Still processing...
-                        </Typography>
-                        <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem', lineHeight: 1.6 }}>
-                            The AI engine is on the free tier and may take 60+ seconds to complete. This is normal. Please don't close this page.
-                        </Typography>
-                    </Box>
-                )}
-                
-                {isSlow && !isVerySlow && (
-                    <Box sx={{ 
-                        mt: 2, p: 1.5, 
-                        background: 'rgba(255,193,7,0.06)',
-                        border: '1px solid rgba(255,193,7,0.15)',
-                        borderRadius: '10px',
-                        mb: 2
-                    }}>
-                        <Typography sx={{ color: 'rgba(255,193,7,0.8)', fontSize: '0.8rem' }}>
-                            ℹ️ Free tier AI engine is starting up. Please wait...
-                        </Typography>
-                    </Box>
-                )}
                 
                 <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', mb: 2 }}>
                     {elapsed}s elapsed

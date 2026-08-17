@@ -25,31 +25,22 @@ function getErrorMessage(err: unknown): string {
 function friendlyError(err: unknown, endpoint: string): string {
     const msg = getErrorMessage(err);
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
-        return 'Cannot reach the server. Please check your connection or try again in a moment.';
+        return 'Cannot reach the server. Please check your connection or try again.';
     }
     if (msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('temporarily unavailable')) {
-        if (endpoint.includes('upload-resume')) {
-            return 'The AI engine is waking up (free tier cold start). Please wait 30-60 seconds and try again.';
-        }
-        return 'Service temporarily unavailable. Please try again in 30 seconds.';
+        return 'Service is temporarily busy. Please try again in a moment.';
     }
     if (msg.includes('502') || msg.includes('504') || msg.includes('Gateway') || msg.includes('timeout')) {
-        if (endpoint.includes('upload-resume')) {
-            return 'The request took too long to process. This is normal on the free tier when the AI is cold-starting. Please wait 60 seconds and try again.';
-        }
-        return 'Request timeout. Please try again in 30 seconds.';
+        return 'Request took too long. Please try again.';
     }
     if (msg.includes('500')) {
-        if (endpoint.includes('upload-resume')) {
-            return 'Analysis failed. The AI engine may be starting up — please wait 30 seconds and try again.';
-        }
         return 'Server error. Please try again.';
     }
     if (msg.includes('401') || msg.includes('Token') || msg.includes('Authentication')) {
         return 'Your session expired. Please log in again.';
     }
     if (msg.includes('429')) {
-        return 'Too many requests. Please wait a minute and try again.';
+        return 'Too many requests. Please wait a moment and try again.';
     }
     if (msg.includes('405') || msg.includes('Method Not Allowed')) {
         return 'Invalid request. Please try again or contact support.';
@@ -115,50 +106,85 @@ class ApiService {
 
     async request<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
-        try {
-            let accessToken: string;
+        
+        // For upload-resume, implement intelligent retry with exponential backoff
+        const isUploadResume = endpoint.includes('upload-resume');
+        const maxRetries = isUploadResume ? 5 : 1;
+        const initialDelay = isUploadResume ? 3000 : 0; // 3 seconds initial delay for cold starts
+        
+        let lastError: Error | null = null;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                accessToken = await this.getValidAccessToken();
-            } catch (tokenErr) {
-                // Token fetch failed — redirect to login
-                window.location.href = '/login';
-                throw new Error('Authentication failed. Please log in again.');
-            }
+                let accessToken: string;
+                try {
+                    accessToken = await this.getValidAccessToken();
+                } catch (tokenErr) {
+                    // Token fetch failed — redirect to login
+                    window.location.href = '/login';
+                    throw new Error('Authentication failed. Please log in again.');
+                }
 
-            const res = await fetch(url, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`,
-                    ...options.headers,
-                },
-            });
+                const res = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`,
+                        ...options.headers,
+                    },
+                });
 
-            // Handle specific error statuses
-            if (res.status === 401) {
-                useAuth.getState().clearAuth();
-                window.location.href = '/login';
-                throw new Error('Your session expired. Please log in again.');
+                // Handle specific error statuses
+                if (res.status === 401) {
+                    useAuth.getState().clearAuth();
+                    window.location.href = '/login';
+                    throw new Error('Your session expired. Please log in again.');
+                }
+                
+                // For 503, retry silently on upload-resume
+                if (res.status === 503) {
+                    const body = await res.json().catch(() => ({}));
+                    const error = new Error(body.message || 'Service temporarily unavailable');
+                    
+                    if (isUploadResume && attempt < maxRetries) {
+                        console.log(`[API] Attempt ${attempt}/${maxRetries} failed with 503, retrying in ${initialDelay * attempt}ms...`);
+                        lastError = error;
+                        await new Promise(r => setTimeout(r, initialDelay * attempt));
+                        continue; // Retry
+                    }
+                    throw error;
+                }
+                
+                if (res.status === 500) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.message || 'Server error');
+                }
+                if (res.status === 429) {
+                    throw new Error('429 - Rate limit exceeded');
+                }
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.message || body.error || `HTTP ${res.status}`);
+                }
+                return await res.json();
+            } catch (err: unknown) {
+                lastError = err instanceof Error ? err : new Error(String(err));
+                
+                // Don't retry on client errors (4xx except 503) or auth errors
+                const errMsg = lastError.message || '';
+                if (errMsg.includes('401') || errMsg.includes('Authentication') || errMsg.includes('Session')) {
+                    throw lastError;
+                }
+                
+                // For other errors on non-upload-resume, throw immediately
+                if (!isUploadResume || attempt === maxRetries) {
+                    throw lastError;
+                }
             }
-            if (res.status === 503) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error(body.message || '503 - Service temporarily unavailable');
-            }
-            if (res.status === 500) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error(body.message || 'Server error');
-            }
-            if (res.status === 429) {
-                throw new Error('429 - Rate limit exceeded');
-            }
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error(body.message || body.error || `HTTP ${res.status}`);
-            }
-            return await res.json();
-        } catch (err: unknown) {
-            throw new Error(friendlyError(err, endpoint));
         }
+        
+        // All retries exhausted
+        throw lastError || new Error(friendlyError(lastError, endpoint));
     }
 
     async get<T = unknown>(endpoint: string): Promise<T> {

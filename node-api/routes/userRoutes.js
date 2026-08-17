@@ -320,20 +320,7 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
             return res.status(503).json({ error: "AI service is not properly configured. Please try again later." });
         }
 
-        // Try to wake up Python AI with timeout
-        console.log("[upload-resume] 🔥 Warming up AI service...");
-        try { 
-            await axios.get(`${PYTHON_URL}/`, { 
-                timeout: 5_000,
-                headers: { 'User-Agent': 'Futrix-Warmer/1.0' }
-            }); 
-            console.log("[upload-resume] ✅ AI service is warm");
-        } catch (wakeErr) {
-            console.warn("[upload-resume] ⚠️ AI service may be cold starting (wake-up attempt failed)");
-            // Continue - service might still respond to main request
-        }
-
-        // Call Python AI engine with intelligent retry
+        // Call Python AI engine with intelligent retry (no warm-up call)
         console.log("[upload-resume] 📊 Calling AI analysis service...");
         let aiData;
         try {
@@ -345,29 +332,29 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
             if (aiErr.code === "ECONNREFUSED") {
                 return res.status(503).json({ 
                     error: "AI engine is offline",
-                    message: "The analysis service is temporarily down. Please try again in 30 seconds.",
-                    retryAfter: 30
+                    message: "The analysis service is temporarily unavailable. Please try again.",
+                    retryAfter: 5
                 });
             }
             if (aiErr.code === "ECONNABORTED" || aiErr.message?.includes("timeout")) {
                 return res.status(503).json({ 
                     error: "Request timeout",
-                    message: "The AI engine is processing requests slowly. This is normal on the free tier. Please wait 30-60 seconds and try again.",
-                    retryAfter: 60
+                    message: "The request took too long. Please try again.",
+                    retryAfter: 5
                 });
             }
             if (aiErr.response?.status === 503) {
                 return res.status(503).json({ 
                     error: "Service unavailable",
-                    message: "The AI engine is temporarily overloaded. Please wait a moment and try again.",
-                    retryAfter: 30
+                    message: "The AI engine is temporarily busy. Please try again.",
+                    retryAfter: 5
                 });
             }
             if (aiErr.response?.status === 504 || aiErr.response?.status === 502) {
                 return res.status(503).json({ 
                     error: "Gateway timeout",
-                    message: "The request took too long to process. This is normal on the free tier when service is cold-starting. Please wait 60 seconds and try again.",
-                    retryAfter: 60
+                    message: "The request took too long to process. Please try again.",
+                    retryAfter: 5
                 });
             }
             if (aiErr.response?.data?.detail) {
@@ -383,8 +370,8 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
             
             return res.status(503).json({ 
                 error: "Analysis temporarily unavailable",
-                message: "Please wait 30 seconds and try again. On the free tier, the AI engine may take time to start.",
-                retryAfter: 30
+                message: "Please try again.",
+                retryAfter: 5
             });
         }
 
