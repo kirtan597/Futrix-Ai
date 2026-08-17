@@ -431,16 +431,6 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
     }
 });
 
-// ─── GET /api/upload-resume (method not allowed) ───────────────────────────────
-router.get("/upload-resume", (req, res) => {
-    res.status(405).json({ 
-        error: "Method Not Allowed", 
-        message: "POST /api/upload-resume is the correct endpoint. Send resume text and email. Make sure you are logged in first.",
-        hint: "Check that your authorization token is valid and not expired",
-        example: { text: "Your resume text...", email: "user@example.com" }
-    });
-});
-
 // ─── GET /api/history ─────────────────────────────────────────────────────────
 // Returns the last 20 analyses for a user, sorted newest first.
 router.get("/history", auth, async (req, res) => {
