@@ -17,7 +17,7 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 // ─── POST /api/login ──────────────────────────────────────────────────────────
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-router.post("/login", rateLimiter(10, 15 * 60 * 1000), async (req, res) => {
+router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
     const { email } = req.body;
     if (!email || !EMAIL_REGEX.test(email)) {
         return res.status(400).json({ error: "A valid email is required." });
@@ -63,7 +63,7 @@ router.post("/login", rateLimiter(10, 15 * 60 * 1000), async (req, res) => {
 });
 
 // ─── POST /api/auth/google ────────────────────────────────────────────────────
-router.post("/auth/google", rateLimiter(10, 15 * 60 * 1000), async (req, res) => {
+router.post("/auth/google", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
     const { credential } = req.body;
     if (!credential) {
         return res.status(400).json({ error: "Google credential is required." });
@@ -254,7 +254,7 @@ router.get("/auth/verify", auth, async (req, res) => {
 });
 
 // ─── POST /api/upload-resume ──────────────────────────────────────────────────
-router.post("/upload-resume", auth, rateLimiter(20, 60 * 60 * 1000), async (req, res) => {
+router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req, res) => {
     const { text, email } = req.body;
     if (!text || text.trim().length < 50) {
         return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });

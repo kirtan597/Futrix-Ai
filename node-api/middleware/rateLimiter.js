@@ -1,57 +1,70 @@
 /**
- * Simple in-memory rate limiter
- * Tracks by user email (authenticated) or IP (unauthenticated)
+ * Production Rate Limiter
+ * Tracks by authenticated user email (most reliable identifier)
+ * Falls back to IP for unauthenticated requests
+ * 
+ * For authenticated users: Tracks individually by email
+ * For unauthenticated: Tracks by IP with generous limits
  */
 const requestCounts = new Map();
 
 /**
  * Rate limiter middleware
- * @param {number} maxRequests - Maximum requests allowed
- * @param {number} windowMs - Time window in milliseconds
+ * @param {number} maxRequests - Maximum requests allowed per user
+ * @param {number} windowMs - Time window in milliseconds (default 1 hour)
  */
-function rateLimiter(maxRequests = 20, windowMs = 60 * 60 * 1000) {
+function rateLimiter(maxRequests = 50, windowMs = 60 * 60 * 1000) {
     return (req, res, next) => {
-        // Use user email if authenticated, otherwise use IP
-        const identifier = req.user?.email || req.user?.id || req.ip || req.connection?.remoteAddress || 'unknown';
+        // Priority: authenticated user email > user ID > IP
+        const identifier = req.user?.email || req.user?.id || req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
         const now = Date.now();
+        const key = `${identifier}:${req.path}`;
         
-        if (!requestCounts.has(identifier)) {
-            requestCounts.set(identifier, []);
+        // Initialize request tracking for this identifier+path
+        if (!requestCounts.has(key)) {
+            requestCounts.set(key, []);
         }
         
-        const requests = requestCounts.get(identifier);
+        const requests = requestCounts.get(key);
         
-        // Remove old requests outside the time window
+        // Remove requests outside the window
         const recentRequests = requests.filter(timestamp => now - timestamp < windowMs);
         
+        // Check if limit exceeded
         if (recentRequests.length >= maxRequests) {
+            const oldestRequest = recentRequests[0];
+            const retryAfterSeconds = Math.ceil((oldestRequest + windowMs - now) / 1000);
+            
             return res.status(429).json({
                 error: "Too Many Requests",
-                message: `Maximum ${maxRequests} requests per ${Math.round(windowMs / 60000)} minutes. Please try again later.`,
-                retryAfter: Math.ceil((recentRequests[0] + windowMs - now) / 1000)
+                message: `Rate limit: ${maxRequests} requests per ${Math.round(windowMs / 60000)} minutes`,
+                retryAfter: retryAfterSeconds,
+                identifier: req.user?.email ? "authenticated_user" : "ip_address"
             });
         }
         
+        // Add current request timestamp
         recentRequests.push(now);
-        requestCounts.set(identifier, recentRequests);
+        requestCounts.set(key, recentRequests);
         
         next();
     };
 }
 
-// Clean up old entries every hour
+// Cleanup old entries every 30 minutes
 setInterval(() => {
     const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
+    const twoHours = 2 * 60 * 60 * 1000;
     
-    for (const [identifier, requests] of requestCounts.entries()) {
-        const recentRequests = requests.filter(timestamp => now - timestamp < oneHour);
+    for (const [key, requests] of requestCounts.entries()) {
+        const recentRequests = requests.filter(timestamp => now - timestamp < twoHours);
+        
         if (recentRequests.length === 0) {
-            requestCounts.delete(identifier);
+            requestCounts.delete(key);
         } else {
-            requestCounts.set(identifier, recentRequests);
+            requestCounts.set(key, recentRequests);
         }
     }
-}, 60 * 60 * 1000);
+}, 30 * 60 * 1000);
 
 module.exports = rateLimiter;
