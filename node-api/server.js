@@ -3,6 +3,8 @@ require("dotenv").config(); // Must be first before any process.env usage
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const crypto = require("crypto"); // Fix: explicit crypto import for Node 18
+
 const app = express();
 
 // ─── Production Logging Setup ──────────────────────────────────────────────────
