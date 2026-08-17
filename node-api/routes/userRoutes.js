@@ -17,13 +17,22 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 // ─── POST /api/login ──────────────────────────────────────────────────────────
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// GET /api/login - redirect to health (browser prefetch/preload safety)
+router.get("/login", (req, res) => {
+    res.status(400).json({ error: "Use POST /api/login with email in body" });
+});
+
 router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
     const { email } = req.body;
+    console.log("[login] Email received:", email);
+    
     if (!email || !EMAIL_REGEX.test(email)) {
+        console.log("[login] Invalid email:", email);
         return res.status(400).json({ error: "A valid email is required." });
     }
     try {
         let user = await User.findOne({ email });
+        console.log("[login] User found:", !!user);
         
         // Check if account is locked
         if (user && user.isLocked) {
@@ -34,16 +43,20 @@ router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
         }
         
         if (!user) {
+            console.log("[login] Creating new user");
             user = await User.create({ email });
+            console.log("[login] User created:", user._id);
         }
 
         // Generate tokens
         const { accessToken, refreshToken } = generateTokens(user);
+        console.log("[login] Tokens generated");
         
         // Save refresh token to database
         user.refreshToken = refreshToken;
         user.lastLogin = new Date();
         await user.save();
+        console.log("[login] User saved");
 
         res.json({ 
             status: "logged_in", 
@@ -57,8 +70,8 @@ router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
             }
         });
     } catch (err) {
-        console.error("[login]", err.message);
-        res.status(500).json({ error: "Server error during login." });
+        console.error("[login] ERROR:", err.message, err.stack);
+        res.status(500).json({ error: "Server error during login.", detail: err.message });
     }
 });
 
@@ -258,22 +271,24 @@ router.get("/auth/verify", auth, async (req, res) => {
 // ─── Helper: Retry logic for AI service ────────────────────────────────────────
 async function callAIServiceWithRetry(text, maxRetries = 5, initialDelay = 500) {
     let lastError = null;
+    const PYTHON_URL_ENDPOINT = `${PYTHON_URL}/analyze`;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            console.log(`[AI-Service] Attempt ${attempt}/${maxRetries} to call AI engine`);
+            console.log(`[AI-Service] Attempt ${attempt}/${maxRetries} to ${PYTHON_URL_ENDPOINT}`);
             
-            // Adaptive timeout: longer on first attempt for cold starts
+            // First attempt longer timeout (cold start), rest shorter
             const timeout = attempt === 1 ? 120_000 : 60_000;
             
             const aiRes = await axios.post(
-                `${PYTHON_URL}/analyze`,
+                PYTHON_URL_ENDPOINT,
                 { resume: text },
                 { 
                     timeout,
                     headers: {
                         'X-Request-Attempt': String(attempt),
-                        'User-Agent': 'Futrix-Node-API/1.0'
+                        'User-Agent': 'Futrix-Node-API/2.0',
+                        'Content-Type': 'application/json'
                     }
                 }
             );
@@ -285,24 +300,32 @@ async function callAIServiceWithRetry(text, maxRetries = 5, initialDelay = 500) 
             const errorType = err.code || err.response?.status || 'UNKNOWN';
             const duration = err.config?.timeout || 0;
             
-            console.error(`[AI-Service] ❌ Attempt ${attempt} failed: ${errorType} (timeout: ${duration}ms)`);
+            // Log detailed error info
+            console.error(`[AI-Service] ❌ Attempt ${attempt}/${maxRetries}:`, {
+                type: errorType,
+                status: err.response?.status,
+                message: err.message,
+                timeout: duration,
+                endpoint: PYTHON_URL_ENDPOINT,
+                responseData: err.response?.data || null
+            });
             
-            // Don't retry on client errors (4xx)
-            if (err.response?.status && err.response.status < 500) {
+            // Don't retry on client errors (4xx) except 503/504
+            if (err.response?.status && err.response.status < 500 && err.response.status !== 503 && err.response.status !== 504) {
                 console.error(`[AI-Service] Client error ${err.response.status} - not retrying`);
                 throw err;
             }
             
-            // Calculate exponential backoff delay
+            // Calculate exponential backoff for server errors
             if (attempt < maxRetries) {
-                const delay = initialDelay * Math.pow(2, attempt - 1); // Exponential backoff: 500ms, 1s, 2s, 4s, 8s
-                console.log(`[AI-Service] Waiting ${delay}ms before retry (attempt ${attempt + 1}/${maxRetries})...`);
+                const delay = initialDelay * Math.pow(2, attempt - 1);
+                console.log(`[AI-Service] Waiting ${delay}ms before retry...`);
                 await new Promise(r => setTimeout(r, delay));
             }
         }
     }
     
-    // All retries exhausted
+    console.error(`[AI-Service] All ${maxRetries} retries exhausted`);
     throw lastError;
 }
 
@@ -317,8 +340,8 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
     }
     try {
         // Validate Python URL is configured
-        if (!PYTHON_URL || PYTHON_URL === 'http://localhost:8000') {
-            console.error("[upload-resume] ❌ PYTHON_URL not configured for production");
+        if (!PYTHON_URL) {
+            console.error("[upload-resume] ❌ PYTHON_URL not configured");
             return res.status(503).json({ error: "AI service is not properly configured. Please try again later." });
         }
 
@@ -333,23 +356,30 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
             // Provide specific error messages based on error type
             if (aiErr.code === "ECONNREFUSED") {
                 return res.status(503).json({ 
-                    error: "AI engine is offline",
-                    message: "The analysis service is temporarily unavailable. Please try again.",
-                    retryAfter: 5
+                    error: "AI engine offline",
+                    message: "Cannot connect to analysis service. Please try again in a few moments.",
+                    retryAfter: 10
+                });
+            }
+            if (aiErr.code === "ENOTFOUND" || aiErr.code === "ENETUNREACH") {
+                return res.status(503).json({ 
+                    error: "Network error",
+                    message: "Unable to reach the AI service. This is usually temporary.",
+                    retryAfter: 10
                 });
             }
             if (aiErr.code === "ECONNABORTED" || aiErr.message?.includes("timeout")) {
                 return res.status(503).json({ 
                     error: "Request timeout",
-                    message: "The request took too long. Please try again.",
+                    message: "The analysis is taking longer than expected. Please try again.",
                     retryAfter: 5
                 });
             }
             if (aiErr.response?.status === 503) {
                 return res.status(503).json({ 
-                    error: "Service unavailable",
-                    message: "The AI engine is temporarily busy. Please try again.",
-                    retryAfter: 5
+                    error: "Service overloaded",
+                    message: "The AI engine is currently processing too many requests. Please try again shortly.",
+                    retryAfter: 10
                 });
             }
             if (aiErr.response?.status === 504 || aiErr.response?.status === 502) {
@@ -359,8 +389,17 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
                     retryAfter: 5
                 });
             }
+            if (aiErr.response?.status === 400) {
+                return res.status(400).json({ 
+                    error: aiErr.response?.data?.detail || "Invalid resume format",
+                    message: "The resume text could not be analyzed. Please check your input."
+                });
+            }
             if (aiErr.response?.data?.detail) {
-                return res.status(400).json({ error: aiErr.response.data.detail });
+                return res.status(aiErr.response.status || 500).json({ 
+                    error: "Analysis failed",
+                    message: aiErr.response.data.detail 
+                });
             }
             
             // Generic service error
@@ -368,12 +407,13 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
                 status: aiErr.response?.status,
                 message: aiErr.message,
                 code: aiErr.code,
+                data: aiErr.response?.data
             });
             
             return res.status(503).json({ 
-                error: "Analysis temporarily unavailable",
-                message: "Please try again.",
-                retryAfter: 5
+                error: "Analysis service unavailable",
+                message: "The AI engine is temporarily unavailable. Please try again shortly.",
+                retryAfter: 10
             });
         }
 

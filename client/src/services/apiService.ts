@@ -29,7 +29,7 @@ function getErrorMessage(err: unknown): string {
     return JSON.stringify(err);
 }
 
-function friendlyError(err: unknown, endpoint: string): string {
+function friendlyError(err: unknown): string {
     const msg = getErrorMessage(err);
     
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
@@ -231,7 +231,7 @@ class ApiService {
             }
         }
         
-        throw lastError || new Error(friendlyError(lastError, endpoint));
+        throw lastError || new Error(friendlyError(lastError));
     }
 
     async get<T = unknown>(endpoint: string): Promise<T> {
@@ -259,7 +259,7 @@ class ApiService {
             }
             return await res.json();
         } catch (err: unknown) {
-            throw new Error(friendlyError(err, endpoint));
+            throw new Error(friendlyError(err));
         }
     }
 }

@@ -72,8 +72,8 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
 
     if (!visible) return null;
 
-    const isVerySlow = elapsed > 30;
-    const isSlow = elapsed > 15 && elapsed <= 30;
+    const isSlow = elapsed > 15;
+    const messageOverride = isSlow ? 'This is taking longer than expected...' : undefined;
 
     return (
         <Box sx={{
@@ -98,11 +98,11 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
                     Analyzing with AI
                 </Typography>
                 <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.8rem, 2.5vw, 0.85rem)', mb: 0.5 }}>
-                    {ANALYZING_STEPS[step]}
+                    {messageOverride || ANALYZING_STEPS[step]}
                 </Typography>
                 
                 <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', mb: 2 }}>
-                    {elapsed}s elapsed
+                    {elapsed}s{isSlow ? ' — still processing' : ''}
                 </Typography>
                 <Box sx={{ width: '100%', mx: 'auto' }}>
                     <LinearProgress
@@ -157,9 +157,23 @@ export default function UploadResume() {
             localStorage.setItem('analysisResult', JSON.stringify(data));
             navigate('/dashboard');
         } catch (err: unknown) {
-            console.error('[UploadResume] ❌ Error:', err instanceof Error ? err.message : err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error('[UploadResume] ❌ Error:', errorMsg);
             localStorage.removeItem('analysisResult');
-            setError(getErrorMessage(err, 'Analysis failed. Please try again.'));
+            
+            // Provide user-friendly error messages
+            let displayError = errorMsg;
+            if (errorMsg.includes('Service') || errorMsg.includes('unavailable') || errorMsg.includes('503')) {
+                displayError = '🔄 The AI engine is busy. Please try again in a few moments.';
+            } else if (errorMsg.includes('timeout')) {
+                displayError = '⏱️ Request took too long. Your network may be slow.';
+            } else if (errorMsg.includes('cannot reach') || errorMsg.includes('Connection') || errorMsg.includes('Failed to fetch')) {
+                displayError = '📡 Cannot reach the server. Check your internet connection.';
+            } else if (errorMsg.includes('Auth') || errorMsg.includes('Session')) {
+                displayError = '🔐 Your session expired. Please log in again.';
+            }
+            
+            setError(displayError);
         } finally {
             setLoading(false);
         }
@@ -296,8 +310,8 @@ export default function UploadResume() {
                         <Box component="form" onSubmit={handleUpload} sx={{ p: 3 }}>
                             <TextField
                                 multiline
-                                minRows={{ xs: 6, sm: 8, md: 13 }}
-                                maxRows={{ xs: 10, sm: 15, md: 20 }}
+                                minRows={13}
+                                maxRows={20}
                                 fullWidth
                                 placeholder={`Paste your resume text here...\n\ne.g.,  Skills: React, Python, Docker\nExperience: Software Engineer at...`}
                                 value={resumeText}
