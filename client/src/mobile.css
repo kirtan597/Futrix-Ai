@@ -9,12 +9,24 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
+    /* Fix iOS Safari viewport */
+    -webkit-user-scalable: no;
+    user-scalable: no;
 }
 
 #root {
     width: 100%;
     min-height: 100%;
     -webkit-overflow-scrolling: touch;
+    /* Ensure full viewport coverage */
+    display: flex;
+    flex-direction: column;
+}
+
+/* ─── Viewport meta equivalent in CSS ─── */
+@viewport {
+    width: device-width;
+    zoom: 1;
 }
 
 /* ─── Smooth scrolling for iOS ─── */
@@ -29,6 +41,8 @@ select {
     font-size: 16px !important; /* Prevents iOS zoom on focus */
     padding: 12px;
     border-radius: 8px;
+    /* Prevent iOS auto-zoom on input focus */
+    box-sizing: border-box;
 }
 
 /* Focus styles - visible on mobile */
@@ -45,6 +59,8 @@ a,
 [role="button"] {
     min-height: 44px;
     min-width: 44px;
+    /* Better touch feedback */
+    transition: all 0.15s ease;
 }
 
 /* ─── Prevent zoom on double-tap ─── */
@@ -84,11 +100,15 @@ textarea {
     /* Force RecoParts to take parent width correctly */
     display: block !important;
     box-sizing: border-box;
+    /* Prevent layout shift */
+    contain: layout style paint;
 }
 
 .recharts-wrapper svg {
     width: 100% !important;
     height: auto !important;
+    /* Prevent overflow on mobile */
+    max-width: 100%;
 }
 
 /* Ensure responsive container parent has proper constraints */
@@ -99,11 +119,13 @@ textarea {
     contain: layout style paint;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .recharts-wrapper {
         min-height: 180px;
         max-width: 100%;
         overflow: hidden;
+        /* Use CSS containment for better performance */
+        contain: strict;
     }
     
     /* Prevent negative width calculation on small screens */
@@ -117,6 +139,14 @@ textarea {
         width: 100% !important;
         height: auto !important;
         min-width: 0 !important;
+        display: block;
+    }
+    
+    /* Recharts legend adjustment */
+    .recharts-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 }
 
@@ -202,5 +232,30 @@ a {
                  max(0px, env(safe-area-inset-right)) 
                  max(0px, env(safe-area-inset-bottom)) 
                  max(0px, env(safe-area-inset-left));
+    }
+}
+
+/* ─── Extra small device fixes ─── */
+@media (max-width: 360px) {
+    body, html, #root {
+        font-size: 13px;
+    }
+    
+    /* Aggressive padding reduction on ultra-small screens */
+    * {
+        --padding-x: 8px;
+        --padding-y: 6px;
+    }
+    
+    button {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+    
+    /* Prevent layout shift with overflow-x */
+    body, html, #root {
+        overflow-x: hidden;
+        width: 100vw;
+        max-width: 100%;
     }
 }
