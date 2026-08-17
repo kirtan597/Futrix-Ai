@@ -170,10 +170,12 @@ export default function UploadResume() {
         <>
             <AnalyzingOverlay visible={loading} />
             <Box sx={{
-                minHeight: '100vh',
+                minHeight: '100%',
                 background: '#0a0a0a',
-                py: { xs: 3, md: 5 },
-                px: { xs: 2, sm: 3, md: 5 },
+                py: { xs: 2, sm: 3, md: 5 },
+                px: { xs: 1.5, sm: 2, md: 5 },
+                width: '100%',
+                boxSizing: 'border-box',
             }}>
                 {/* ── Header ── */}
                 <Box sx={{ mb: 5 }}>
@@ -217,7 +219,7 @@ export default function UploadResume() {
                 </Box>
 
                 {/* ── Main grid ── */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 288px' }, gap: 2.5 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 288px' }, gap: { xs: 1.5, md: 2.5 } }}>
 
                     {/* ── Upload card ── */}
                     <Panel>
@@ -302,8 +304,13 @@ export default function UploadResume() {
                                     mb: 2,
                                     '& .MuiOutlinedInput-root': {
                                         fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                                        fontSize: '0.845rem',
+                                        fontSize: 'clamp(0.8rem, 2vw, 0.845rem)',
                                         lineHeight: 1.75,
+                                    },
+                                    '& .MuiOutlinedInput-input': {
+                                        '@media (max-width:600px)': {
+                                            fontSize: '16px !important', // Prevent iOS zoom
+                                        },
                                     },
                                 }}
                             />
@@ -339,7 +346,7 @@ export default function UploadResume() {
                     </Panel>
 
                     {/* ── Sidebar ── */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
 
                         {/* What happens next */}
                         <Panel sx={{ p: 2.5 }}>

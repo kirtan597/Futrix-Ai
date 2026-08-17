@@ -1,0 +1,175 @@
+/* ────────────────────────────────────────────────────────────────────────────
+   Mobile Responsive & Animation Fixes
+   ────────────────────────────────────────────────────────────────────────────
+*/
+
+/* ─── Document fixes ─── */
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#root {
+    width: 100%;
+    min-height: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Smooth scrolling for iOS ─── */
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* ─── Input field fixes for mobile ─── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+select {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    padding: 12px;
+    border-radius: 8px;
+}
+
+/* Focus styles - visible on mobile */
+input:focus,
+textarea:focus,
+select:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* ─── Touch target sizes (minimum 44x44px) ─── */
+button,
+a,
+[role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* ─── Prevent zoom on double-tap ─── */
+button,
+a,
+input,
+textarea {
+    touch-action: manipulation;
+}
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+/* ─── Chart responsiveness ─── */
+.recharts-wrapper {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 200px;
+}
+
+@media (max-width: 600px) {
+    .recharts-wrapper {
+        min-height: 180px;
+    }
+}
+
+/* ─── Grid gap adjustment ─── */
+@media (max-width: 600px) {
+    [class*="MuiGrid"] {
+        gap: 12px !important;
+    }
+}
+
+/* ─── Typography scaling ─── */
+@media (max-width: 600px) {
+    h1, h2, h3, h4, h5, h6 {
+        word-break: break-word;
+        hyphens: auto;
+    }
+}
+
+/* ─── Safe area support ─── */
+@supports (padding: max(0px)) {
+    .app-container {
+        padding-top: max(16px, env(safe-area-inset-top));
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+    }
+}
+
+/* ─── Mobile landscape optimizations ─── */
+@media (max-height: 500px) and (orientation: landscape) {
+    body {
+        font-size: 12px;
+    }
+    
+    button {
+        padding: 6px 12px;
+    }
+    
+    [role="button"] {
+        padding: 4px 8px;
+    }
+}
+
+/* ─── Prevent text selection on UI elements ─── */
+.no-select,
+[role="button"],
+button {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Link tap highlight ─── */
+a {
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── CSS containment for performance ─── */
+.glass-card,
+.stat-card,
+[class*="Card"] {
+    contain: layout style paint;
+}
+
+/* ─── Reduce motion for accessibility ─── */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ─── High-DPI screens optimization ─── */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    /* No additional changes needed, DPI handled by theme */
+}
+
+/* ─── Notch support (iPhone X+) ─── */
+@supports (padding: max(0px)) {
+    body {
+        padding: max(0px, env(safe-area-inset-top)) 
+                 max(0px, env(safe-area-inset-right)) 
+                 max(0px, env(safe-area-inset-bottom)) 
+                 max(0px, env(safe-area-inset-left));
+    }
+}

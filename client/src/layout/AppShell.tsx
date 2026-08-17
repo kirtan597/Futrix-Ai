@@ -10,27 +10,40 @@ interface AppShellProps {
 /**
  * AppShell — persistent sidebar + scrollable main content area.
  * Used for all authenticated pages.
- * Mobile: Adds padding for top bar and bottom navigation
+ * Mobile: Adds padding for top bar and bottom navigation with safe-area support
  */
 export default function AppShell({ children }: AppShellProps) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     return (
-        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#0a0a0a' }}>
+        <Box sx={{ 
+            display: 'flex', 
+            minHeight: '100dvh', // Dynamic viewport height
+            height: '100dvh',
+            background: '#0a0a0a',
+            width: '100%',
+            overflow: 'hidden',
+        }}>
             <Sidebar />
             <Box
                 component="main"
                 sx={{
                     flex: 1,
                     minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
                     overflowY: 'auto',
                     overflowX: 'hidden',
+                    '-webkit-overflow-scrolling': 'touch',
                     // Mobile: Add padding for top bar and bottom nav
-                    ...(isMobile && {
-                        paddingTop: '56px', // Top mobile header
-                        paddingBottom: 'calc(64px + env(safe-area-inset-bottom))', // Bottom nav + safe area
-                    }),
+                    paddingTop: isMobile ? 'calc(56px + env(safe-area-inset-top))' : 0,
+                    paddingBottom: isMobile ? 'calc(64px + env(safe-area-inset-bottom))' : 0,
+                    // Desktop: standard padding
+                    '@media (min-width: 960px)': {
+                        paddingTop: 0,
+                        paddingBottom: 0,
+                    },
                 }}
             >
                 {children}

@@ -184,10 +184,12 @@ export default function Dashboard() {
 
     return (
         <Box sx={{
-            minHeight: '100vh',
+            minHeight: '100%',
             background: '#0a0a0a',
-            py: { xs: 3, md: 5 },
-            px: { xs: 2, sm: 3, md: 5 },
+            py: { xs: 2, sm: 3, md: 5 },
+            px: { xs: 1.5, sm: 2, md: 5 },
+            width: '100%',
+            boxSizing: 'border-box',
         }}>
 
             {/* ── Page Header ── */}
@@ -231,11 +233,12 @@ export default function Dashboard() {
                 </Box>
             </Box>
 
-            {/* ── ROW 1: Stats + Score ── */}
+            {/* ── ROW 1: Stats ── */}
             <Box sx={{
                 display: 'grid',
                 gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' },
-                gap: 2.5, mb: 2.5,
+                gap: { xs: 1.5, sm: 2, md: 2.5 }, 
+                mb: 2.5,
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(14px)',
                 transition: 'opacity 0.5s 0.08s, transform 0.5s 0.08s',
@@ -267,42 +270,48 @@ export default function Dashboard() {
             </Box>
 
             {/* ── ROW 2: Score ring + Score area + Donut ── */}
-            {/* Mobile: score ring & donut side by side, area below. Desktop: 3-col */}
+            {/* Mobile: single column, all stacked. sm: 2x2. md+: 3 col with reordering */}
             <Box sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr 1fr', md: '240px 1fr 240px' },
-                gridTemplateRows: { xs: 'auto auto', md: 'auto' },
-                gap: 2.5, mb: 2.5,
+                gridTemplateColumns: { 
+                    xs: '1fr',           // Mobile: 1 column
+                    sm: '1fr 1fr',       // Tablet: 2 columns
+                    md: '240px 1fr 240px' // Desktop: 3 columns with fixed sidebars
+                },
+                gridTemplateRows: { xs: 'auto auto auto', md: 'auto' },
+                gap: 2, 
+                mb: 2.5,
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(14px)',
                 transition: 'opacity 0.5s 0.14s, transform 0.5s 0.14s',
             }}>
                 {/* Score ring card */}
-                <GlassCard sx={{ p: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: { xs: 1.5, md: 2.5 } }}>
+                <GlassCard sx={{ p: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 280 }}>
+                    <Typography sx={{ fontSize: 'clamp(0.6rem, 2vw, 0.68rem)', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: { xs: 1.5, md: 2.5 } }}>
                         Readiness
                     </Typography>
-                    <ScoreRing score={data.readiness_score} size={130} animated />
+                    <ScoreRing score={data.readiness_score} size={{ xs: 100, md: 130 }} animated />
                     <Divider sx={{ width: '70%', my: { xs: 1.5, md: 2.5 } }} />
-                    <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 1.7 }}>
+                    <Typography sx={{ fontSize: 'clamp(0.65rem, 2vw, 0.68rem)', color: 'rgba(255,255,255,0.25)', textAlign: 'center', lineHeight: 1.7 }}>
                         {data.skills.length} skills detected
                     </Typography>
                 </GlassCard>
 
-                {/* Gap donut — shown 2nd on mobile (right of score ring) */}
+                {/* Gap donut card */}
                 <GlassCard sx={{
                     p: { xs: 2, md: 3 },
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    order: { xs: 2, md: 3 },
+                    order: { xs: 'unset', md: 2 },
+                    minHeight: { xs: 'unset', md: 280 },
                 }}>
-                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: 1 }}>
+                    <Typography sx={{ fontSize: 'clamp(0.6rem, 2vw, 0.68rem)', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase', mb: 1 }}>
                         Coverage
                     </Typography>
                     <GapDonut skillsCount={data.skills.length} gapCount={data.gap_skills.length} />
-                    <Typography sx={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', lineHeight: 1, mt: -1 }}>
+                    <Typography sx={{ fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', lineHeight: 1, mt: -1 }}>
                         {coveragePct}%
                     </Typography>
-                    <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.25)', mt: 0.5, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: 'clamp(0.65rem, 2vw, 0.68rem)', color: 'rgba(255,255,255,0.25)', mt: 0.5, textAlign: 'center' }}>
                         Skill coverage
                     </Typography>
                 </GlassCard>
@@ -310,13 +319,14 @@ export default function Dashboard() {
                 {/* Score area — full width on mobile */}
                 <GlassCard sx={{
                     p: { xs: 2, md: 3 },
-                    gridColumn: { xs: '1 / -1', md: 'auto' },
-                    order: { xs: 3, md: 2 },
+                    gridColumn: { xs: 'auto', md: 'auto' },
+                    order: { xs: 'unset', md: 1 },
+                    minHeight: { xs: 'unset', md: 280 },
                 }}>
-                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', mb: 0.5 }}>
+                    <Typography sx={{ fontSize: 'clamp(0.7rem, 2vw, 0.78rem)', fontWeight: 700, color: 'rgba(255,255,255,0.5)', mb: 0.5 }}>
                         Score Progression
                     </Typography>
-                    <Typography sx={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.22)', mb: 2.5 }}>
+                    <Typography sx={{ fontSize: 'clamp(0.6rem, 2vw, 0.68rem)', color: 'rgba(255,255,255,0.22)', mb: 2.5 }}>
                         Estimated growth over the last 6 months
                     </Typography>
                     <ScoreArea currentScore={data.readiness_score} />
@@ -326,8 +336,12 @@ export default function Dashboard() {
             {/* ── ROW 3: Skills + Radar ── */}
             <Box sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '1fr 320px' },
-                gap: 2.5, mb: 2.5,
+                gridTemplateColumns: { 
+                    xs: '1fr',        // Mobile: 1 column
+                    md: '1fr 320px'   // Desktop: 2 columns
+                },
+                gap: { xs: 1.5, md: 2.5 }, 
+                mb: 2.5,
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(14px)',
                 transition: 'opacity 0.5s 0.2s, transform 0.5s 0.2s',
@@ -391,8 +405,11 @@ export default function Dashboard() {
             {/* ── ROW 4: Gaps + Roadmap peek ── */}
             <Box sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-                gap: 2.5,
+                gridTemplateColumns: { 
+                    xs: '1fr',      // Mobile: 1 column
+                    md: '1fr 1fr'   // Desktop: 2 columns
+                },
+                gap: { xs: 1.5, md: 2.5 },
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateY(0)' : 'translateY(14px)',
                 transition: 'opacity 0.5s 0.26s, transform 0.5s 0.26s',

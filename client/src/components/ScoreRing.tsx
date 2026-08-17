@@ -4,13 +4,15 @@ import Typography from '@mui/material/Typography';
 
 interface ScoreRingProps {
     score: number;
-    size?: number;
+    size?: number | { xs?: number; md?: number };
     strokeWidth?: number;
     animated?: boolean;
 }
 
 export default function ScoreRing({ score, size = 160, strokeWidth = 10, animated = true }: ScoreRingProps) {
-    const r = (size / 2) - strokeWidth;
+    // Handle responsive size
+    const baseSize = typeof size === 'object' ? (size.md || 160) : size;
+    const r = (baseSize / 2) - strokeWidth;
     const circ = 2 * Math.PI * r;
     const circleRef = useRef<SVGCircleElement>(null);
 
@@ -40,7 +42,7 @@ export default function ScoreRing({ score, size = 160, strokeWidth = 10, animate
 
     return (
         <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+            <svg width={baseSize} height={baseSize} style={{ transform: 'rotate(-90deg)' }}>
                 {/* Glow filter */}
                 <defs>
                     <filter id="ring-glow">
@@ -53,7 +55,7 @@ export default function ScoreRing({ score, size = 160, strokeWidth = 10, animate
                 </defs>
                 {/* Track */}
                 <circle
-                    cx={size/2} cy={size/2} r={r}
+                    cx={baseSize/2} cy={baseSize/2} r={r}
                     fill="none"
                     stroke="rgba(255,255,255,0.06)"
                     strokeWidth={strokeWidth}
@@ -61,7 +63,7 @@ export default function ScoreRing({ score, size = 160, strokeWidth = 10, animate
                 {/* Progress */}
                 <circle
                     ref={circleRef}
-                    cx={size/2} cy={size/2} r={r}
+                    cx={baseSize/2} cy={baseSize/2} r={r}
                     fill="none"
                     stroke={color}
                     strokeWidth={strokeWidth}
@@ -74,7 +76,7 @@ export default function ScoreRing({ score, size = 160, strokeWidth = 10, animate
             {/* Center content */}
             <Box sx={{ position: 'absolute', textAlign: 'center' }}>
                 <Typography sx={{
-                    fontSize: '2.2rem',
+                    fontSize: 'clamp(1.6rem, 5vw, 2.2rem)',
                     fontWeight: 900,
                     color,
                     lineHeight: 1,
@@ -83,7 +85,7 @@ export default function ScoreRing({ score, size = 160, strokeWidth = 10, animate
                     {score}
                 </Typography>
                 <Typography sx={{
-                    fontSize: '0.6rem',
+                    fontSize: 'clamp(0.55rem, 2vw, 0.6rem)',
                     color: 'rgba(255,255,255,0.35)',
                     fontWeight: 700,
                     letterSpacing: '0.12em',

@@ -95,18 +95,12 @@ const theme = createTheme({
         },
         subtitle1: { fontWeight: 500, letterSpacing: '-0.005em' },
         body1: { 
-            fontSize: '1rem',
+            fontSize: 'clamp(0.9375rem, 2.5vw, 1rem)',
             lineHeight: 1.7,
-            '@media (max-width:600px)': {
-                fontSize: '0.9375rem', // 15px on mobile
-            },
         },
         body2: { 
-            fontSize: '0.875rem',
+            fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
             lineHeight: 1.6,
-            '@media (max-width:600px)': {
-                fontSize: '0.8125rem', // 13px on mobile
-            },
         },
         button: {
             fontWeight: 600,
@@ -134,16 +128,25 @@ const theme = createTheme({
                     // Better font rendering
                     MozOsxFontSmoothing: 'grayscale',
                     WebkitFontSmoothing: 'antialiased',
+                    // Mobile: prevent zoom on input focus (16px minimum on iOS)
+                    fontSize: 16,
                 },
                 body: {
                     background: '#0a0a0a',
                     color: '#ffffff',
                     // Prevent overscroll bounce on iOS
                     overscrollBehavior: 'none',
+                    // Prevent horizontal scrolling
+                    maxWidth: '100vw',
+                    overflow: 'hidden',
+                    width: '100%',
                 },
                 // Mobile viewport height fix
                 '#root': {
-                    minHeight: '-webkit-fill-available',
+                    minHeight: '100dvh', // Dynamic viewport height (excludes address bar)
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
                 },
                 // Improved scrollbars
                 '*::-webkit-scrollbar': { width: '5px', height: '5px' },
@@ -161,6 +164,12 @@ const theme = createTheme({
                     MozUserSelect: 'none',
                     msUserSelect: 'none',
                     userSelect: 'none',
+                },
+                // Mobile-safe inputs
+                'input, textarea, select': {
+                    '@media (max-width:600px)': {
+                        fontSize: '16px !important', // Prevents iOS zoom
+                    },
                 },
             },
         },
