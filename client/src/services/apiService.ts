@@ -27,13 +27,13 @@ function friendlyError(err: unknown, endpoint: string): string {
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('ECONNREFUSED')) {
         return 'Cannot reach the server. Please check your connection or try again in a moment.';
     }
-    if (msg.includes('503') || msg.includes('Service Unavailable')) {
+    if (msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('temporarily unavailable')) {
         if (endpoint.includes('upload-resume')) {
             return 'The AI engine is waking up (free tier cold start). Please wait 30-60 seconds and try again.';
         }
         return 'Service temporarily unavailable. Please try again in 30 seconds.';
     }
-    if (msg.includes('502') || msg.includes('504') || msg.includes('Gateway')) {
+    if (msg.includes('502') || msg.includes('504') || msg.includes('Gateway') || msg.includes('timeout')) {
         if (endpoint.includes('upload-resume')) {
             return 'The request took too long to process. This is normal on the free tier when the AI is cold-starting. Please wait 60 seconds and try again.';
         }
@@ -45,11 +45,14 @@ function friendlyError(err: unknown, endpoint: string): string {
         }
         return 'Server error. Please try again.';
     }
-    if (msg.includes('401') || msg.includes('Token Expired')) {
+    if (msg.includes('401') || msg.includes('Token') || msg.includes('Authentication')) {
         return 'Your session expired. Please log in again.';
     }
     if (msg.includes('429')) {
         return 'Too many requests. Please wait a minute and try again.';
+    }
+    if (msg.includes('405') || msg.includes('Method Not Allowed')) {
+        return 'Invalid request. Please try again or contact support.';
     }
     return msg || 'Something went wrong. Please try again.';
 }
@@ -113,7 +116,15 @@ class ApiService {
     async request<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
         try {
-            const accessToken = await this.getValidAccessToken();
+            let accessToken: string;
+            try {
+                accessToken = await this.getValidAccessToken();
+            } catch (tokenErr) {
+                // Token fetch failed — redirect to login
+                window.location.href = '/login';
+                throw new Error('Authentication failed. Please log in again.');
+            }
+
             const res = await fetch(url, {
                 ...options,
                 headers: {
@@ -122,13 +133,16 @@ class ApiService {
                     ...options.headers,
                 },
             });
+
+            // Handle specific error statuses
             if (res.status === 401) {
                 useAuth.getState().clearAuth();
                 window.location.href = '/login';
-                throw new Error('401');
+                throw new Error('Your session expired. Please log in again.');
             }
             if (res.status === 503) {
-                throw new Error('503 - Service temporarily unavailable');
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || '503 - Service temporarily unavailable');
             }
             if (res.status === 500) {
                 const body = await res.json().catch(() => ({}));
@@ -139,7 +153,7 @@ class ApiService {
             }
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}));
-                throw new Error(body.message || body.error || String(res.status));
+                throw new Error(body.message || body.error || `HTTP ${res.status}`);
             }
             return await res.json();
         } catch (err: unknown) {
