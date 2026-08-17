@@ -177,14 +177,18 @@ export default function UploadResume() {
 
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log('[UploadResume] Form submitted with:', { textLength: resumeText.length, email: localStorage.getItem('userEmail') });
         setLoading(true);
         setError('');
         const email = localStorage.getItem('userEmail') || '';
         try {
+            console.log('[UploadResume] Calling API with POST...');
             const data = await apiService.post('/api/upload-resume', { text: resumeText, email });
+            console.log('[UploadResume] ✅ Success:', data);
             localStorage.setItem('analysisResult', JSON.stringify(data));
             navigate('/dashboard');
         } catch (err: unknown) {
+            console.error('[UploadResume] ❌ Error:', err instanceof Error ? err.message : err);
             localStorage.removeItem('analysisResult');
             setError(getErrorMessage(err, 'Analysis failed. Please try again.'));
         } finally {

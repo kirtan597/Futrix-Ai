@@ -307,7 +307,10 @@ async function callAIServiceWithRetry(text, maxRetries = 3, initialDelay = 2000)
 // ─── POST /api/upload-resume ──────────────────────────────────────────────────
 router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req, res) => {
     const { text, email } = req.body;
+    console.log(`[upload-resume] 📤 POST request received. User: ${req.user?.email || 'unknown'}`);
+    
     if (!text || text.trim().length < 50) {
+        console.log(`[upload-resume] ❌ Text too short: ${text?.length || 0} chars`);
         return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
     }
     try {
@@ -432,7 +435,8 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
 router.get("/upload-resume", (req, res) => {
     res.status(405).json({ 
         error: "Method Not Allowed", 
-        message: "POST /api/upload-resume is the correct endpoint. Send resume text and email.",
+        message: "POST /api/upload-resume is the correct endpoint. Send resume text and email. Make sure you are logged in first.",
+        hint: "Check that your authorization token is valid and not expired",
         example: { text: "Your resume text...", email: "user@example.com" }
     });
 });
