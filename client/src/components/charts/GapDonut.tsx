@@ -15,8 +15,21 @@ export default function GapDonut({ skillsCount, gapCount }: GapDonutProps) {
     const COLORS = ['rgba(255,255,255,0.85)', 'rgba(255,255,255,0.2)'];
 
     return (
-        <Box sx={{ width: '100%', minWidth: 180, minHeight: 220, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <ResponsiveContainer width="100%" height={220} aspect={1}>
+        <Box sx={{ 
+            width: '100%', 
+            minWidth: 160, // Prevent negative width on very small screens
+            maxWidth: '100%',
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minHeight: 200,
+            '& .recharts-wrapper': {
+                width: '100% !important',
+                maxWidth: '100%',
+                overflow: 'hidden',
+            }
+        }}>
+            <ResponsiveContainer width="100%" height={200} minWidth={160}>
                 <PieChart>
                     <Pie
                         data={data}

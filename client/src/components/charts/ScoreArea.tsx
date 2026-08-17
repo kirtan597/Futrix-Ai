@@ -22,8 +22,21 @@ export default function ScoreArea({ currentScore }: ScoreAreaProps) {
     ];
 
     return (
-        <Box sx={{ width: '100%', minWidth: 200, minHeight: 220, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <ResponsiveContainer width="100%" height={220} aspect={1.5}>
+        <Box sx={{ 
+            width: '100%', 
+            minWidth: 160, // Prevent negative width on very small screens
+            maxWidth: '100%',
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minHeight: 200,
+            '& .recharts-wrapper': {
+                width: '100% !important',
+                maxWidth: '100%',
+                overflow: 'hidden',
+            }
+        }}>
+            <ResponsiveContainer width="100%" height={200} minWidth={160}>
                 <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                     <defs>
                         <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">

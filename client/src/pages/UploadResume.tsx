@@ -327,7 +327,8 @@ export default function UploadResume() {
                         <Box component="form" onSubmit={handleUpload} sx={{ p: 3 }}>
                             <TextField
                                 multiline
-                                minRows={13}
+                                minRows={{ xs: 6, sm: 8, md: 13 }}
+                                maxRows={{ xs: 10, sm: 15, md: 20 }}
                                 fullWidth
                                 placeholder={`Paste your resume text here...\n\ne.g.,  Skills: React, Python, Docker\nExperience: Software Engineer at...`}
                                 value={resumeText}
@@ -343,6 +344,12 @@ export default function UploadResume() {
                                     '& .MuiOutlinedInput-input': {
                                         '@media (max-width:600px)': {
                                             fontSize: '16px !important', // Prevent iOS zoom
+                                            minHeight: '120px',
+                                            maxHeight: '300px',
+                                        },
+                                        '@media (min-width:601px) and (max-width:960px)': {
+                                            minHeight: '180px',
+                                            maxHeight: '450px',
                                         },
                                     },
                                 }}

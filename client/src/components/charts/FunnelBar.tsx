@@ -28,8 +28,22 @@ export default function FunnelBar({ skills, gapSkills }: FunnelBarProps) {
     ].sort((a, b) => b.value - a.value);
 
     return (
-        <Box sx={{ width: '100%', minWidth: 200, minHeight: 250, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-            <ResponsiveContainer width="100%" height={220} aspect={1.2}>
+        <Box sx={{ 
+            width: '100%', 
+            minWidth: 160, // Prevent negative width on very small screens
+            maxWidth: '100%',
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            minHeight: 220,
+            '& .recharts-wrapper': {
+                width: '100% !important',
+                maxWidth: '100%',
+                overflow: 'hidden',
+            }
+        }}>
+            <ResponsiveContainer width="100%" height={220} minWidth={160}>
                 <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 4 }} barSize={18}>
                     <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
                     <XAxis

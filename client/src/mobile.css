@@ -81,11 +81,42 @@ textarea {
     width: 100% !important;
     height: auto !important;
     min-height: 200px;
+    /* Force RecoParts to take parent width correctly */
+    display: block !important;
+    box-sizing: border-box;
+}
+
+.recharts-wrapper svg {
+    width: 100% !important;
+    height: auto !important;
+}
+
+/* Ensure responsive container parent has proper constraints */
+[class*="ResponsiveContainer"] {
+    width: 100% !important;
+    display: block !important;
+    /* Prevent layout shift on mobile */
+    contain: layout style paint;
 }
 
 @media (max-width: 600px) {
     .recharts-wrapper {
         min-height: 180px;
+        max-width: 100%;
+        overflow: hidden;
+    }
+    
+    /* Prevent negative width calculation on small screens */
+    .recharts-responsive-container {
+        width: 100% !important;
+        min-width: 160px !important;
+    }
+    
+    /* Force chart SVG to fit container */
+    .recharts-wrapper > svg {
+        width: 100% !important;
+        height: auto !important;
+        min-width: 0 !important;
     }
 }
 

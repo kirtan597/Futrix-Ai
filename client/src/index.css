@@ -286,11 +286,43 @@ button, a, [role="button"] {
   .MuiAccordionSummary-content {
     margin: 8px 0 !important;
   }
+  
+  /* Ensure proper spacing on mobile grids */
+  [role="grid"] {
+    gap: 8px !important;
+  }
+  
+  /* Smaller padding on mobile cards */
+  .glass-card,
+  [class*="Card"] {
+    padding: 12px !important;
+  }
 }
 
 /* Smooth page transitions on mobile */
 @media (prefers-reduced-motion: no-preference) {
   .page-enter {
     animation: fadeUp 0.3s ease both;
+  }
+}
+
+/* Extra small screen fixes (< 360px width - old phones) */
+@media (max-width: 360px) {
+  body {
+    font-size: 14px;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    word-break: break-word;
+  }
+  
+  button {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+  
+  /* Tighter margins on extra small screens */
+  * {
+    margin-collapse: collapse;
   }
 }
