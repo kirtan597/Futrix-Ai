@@ -90,20 +90,31 @@ router.get("/auth/google", (req, res) => {
 // ─── POST /api/auth/google ────────────────────────────────────────────────────
 router.post("/auth/google", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
     const { credential } = req.body;
+    
+    console.log("[google-auth] 📝 New Google auth request received");
+    console.log("[google-auth] ✅ Backend GOOGLE_CLIENT_ID configured:", !!GOOGLE_CLIENT_ID);
+    
     if (!credential) {
+        console.error("[google-auth] ❌ No credential in request body");
         return res.status(400).json({ error: "Google credential is required." });
     }
+    
     if (!GOOGLE_CLIENT_ID) {
+        console.error("[google-auth] ❌ GOOGLE_CLIENT_ID environment variable not set");
         return res.status(500).json({
             error: "Google OAuth is not configured",
-            message: "GOOGLE_CLIENT_ID is missing on the backend."
+            message: "GOOGLE_CLIENT_ID is missing on the backend.",
+            hint: "Set GOOGLE_CLIENT_ID in node-api/.env"
         });
     }
+    
     try {
+        console.log("[google-auth] 🔐 Verifying token with Google...");
         const ticket = await googleClient.verifyIdToken({
             idToken: credential,
             audience: GOOGLE_CLIENT_ID,
         });
+        console.log("[google-auth] ✅ Token verified successfully");
         const payload = ticket.getPayload();
         if (!payload || !payload.email || !payload.sub) {
             return res.status(401).json({
@@ -165,9 +176,18 @@ router.post("/auth/google", rateLimiter(30, 60 * 60 * 1000), async (req, res) =>
             msg.includes("malformed") ||
             msg.includes("Wrong number of segments")
         ) {
+            console.error("[google-auth] 🔐 Token validation failed:", {
+                reason: "Client ID or Audience mismatch",
+                backendClientId: GOOGLE_CLIENT_ID?.substring(0, 20) + "...",
+                error: msg
+            });
             return res.status(401).json({
                 error: "Invalid Google token",
-                message: "Google token validation failed. Ensure frontend and backend use the same Google client ID."
+                message: "Google token validation failed. Ensure frontend and backend use the same Google client ID. Check that your origin (http://localhost:5173) is whitelisted in Google Cloud Console.",
+                debug: {
+                    hint: "Go to Google Cloud Console → OAuth 2.0 Client ID → Add 'http://localhost:5173' to Authorized JavaScript Origins",
+                    backendConfigured: !!GOOGLE_CLIENT_ID
+                }
             });
         }
 

@@ -60,17 +60,36 @@ export default function Login() {
         setError('');
         try {
             if (!credentialResponse.credential) {
-                setError('Google credential is missing. Please try again.');
+                setError('🔐 Google credential is missing. Please try again.');
                 setLoading(false);
+                console.error('[Login] ❌ No credential in response');
                 return;
             }
+
+            console.log('[Login] 🔑 Google credential received, sending to backend...');
+            
             const data = await apiService.publicRequest<AuthResponse>('/api/auth/google', {
                 method: 'POST',
                 body: JSON.stringify({ credential: credentialResponse.credential }),
             });
+            
+            console.log('[Login] ✅ Google auth successful');
             storeAuthData(data);
         } catch (err: unknown) {
-            setError(getErrorMessage(err, 'Google login failed'));
+            const errorMsg = getErrorMessage(err, 'Google login failed');
+            console.error('[Login] ❌ Google auth error:', errorMsg);
+            
+            // Provide user-friendly error messages
+            if (errorMsg.includes('Invalid Google token') || errorMsg.includes('audience')) {
+                setError('⚠️ Token validation failed. Please check Google Console settings.');
+            } else if (errorMsg.includes('origin') || errorMsg.includes('403')) {
+                setError('🌐 Origin mismatch. Your app URL may not be whitelisted in Google Console.');
+            } else if (errorMsg.includes('not verified')) {
+                setError('✉️ Please verify your email in Google Account settings.');
+            } else {
+                setError('🔐 ' + errorMsg);
+            }
+            
             setLoading(false);
         }
     };
