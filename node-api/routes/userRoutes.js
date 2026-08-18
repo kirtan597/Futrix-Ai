@@ -13,13 +13,14 @@ const PYTHON_URL  = (process.env.PYTHON_URL  || "http://localhost:8000").replace
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
-
-// ─── POST /api/login ──────────────────────────────────────────────────────────
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// GET /api/login - redirect to health (browser prefetch/preload safety)
+// GET /api/login - prevent 404 from browser prefetch
 router.get("/login", (req, res) => {
-    res.status(400).json({ error: "Use POST /api/login with email in body" });
+    res.status(405).json({ 
+        error: "Method Not Allowed", 
+        message: "Use POST /api/login with email in body" 
+    });
 });
 
 router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
@@ -73,6 +74,17 @@ router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
         console.error("[login] ERROR:", err.message, err.stack);
         res.status(500).json({ error: "Server error during login.", detail: err.message });
     }
+});
+
+// ─── GET /api/auth/google (catch browser prefetch) ────────────────────────────
+// Some browsers or CDNs may send a GET request before the actual POST.
+// This prevents a 404 error and redirects them to POST.
+router.get("/auth/google", (req, res) => {
+    res.status(405).json({
+        error: "Method Not Allowed",
+        message: "Use POST /api/auth/google with credential in body",
+        hint: "This endpoint requires POST method with { credential: '...' } in the request body"
+    });
 });
 
 // ─── POST /api/auth/google ────────────────────────────────────────────────────
@@ -171,6 +183,14 @@ router.post("/auth/google", rateLimiter(30, 60 * 60 * 1000), async (req, res) =>
 });
 
 // ─── POST /api/auth/refresh ───────────────────────────────────────────────────
+// GET catch to prevent 404 from prefetch
+router.get("/auth/refresh", (req, res) => {
+    res.status(405).json({
+        error: "Method Not Allowed",
+        message: "Use POST /api/auth/refresh with refreshToken in body"
+    });
+});
+
 router.post("/auth/refresh", async (req, res) => {
     const { refreshToken } = req.body;
     
@@ -223,6 +243,14 @@ router.post("/auth/refresh", async (req, res) => {
 });
 
 // ─── POST /api/auth/logout ────────────────────────────────────────────────────
+// GET catch to prevent 404 from prefetch
+router.get("/auth/logout", (req, res) => {
+    res.status(405).json({
+        error: "Method Not Allowed",
+        message: "Use POST /api/auth/logout with refreshToken in body"
+    });
+});
+
 // No auth middleware — token may already be expired when user logs out
 router.post("/auth/logout", async (req, res) => {
     try {
@@ -273,6 +301,8 @@ async function callAIServiceWithRetry(text, maxRetries = 5, initialDelay = 500) 
     let lastError = null;
     const PYTHON_URL_ENDPOINT = `${PYTHON_URL}/analyze`;
     
+    console.log(`[AI-Service] 🔍 Endpoint configured: ${PYTHON_URL_ENDPOINT}`);
+    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             console.log(`[AI-Service] Attempt ${attempt}/${maxRetries} to ${PYTHON_URL_ENDPOINT}`);
@@ -307,7 +337,8 @@ async function callAIServiceWithRetry(text, maxRetries = 5, initialDelay = 500) 
                 message: err.message,
                 timeout: duration,
                 endpoint: PYTHON_URL_ENDPOINT,
-                responseData: err.response?.data || null
+                responseData: err.response?.data || null,
+                pythonUrlFromEnv: PYTHON_URL
             });
             
             // Don't retry on client errors (4xx) except 503/504
@@ -325,11 +356,19 @@ async function callAIServiceWithRetry(text, maxRetries = 5, initialDelay = 500) 
         }
     }
     
-    console.error(`[AI-Service] All ${maxRetries} retries exhausted`);
+    console.error(`[AI-Service] All ${maxRetries} retries exhausted. Last error:`, lastError?.message);
     throw lastError;
 }
 
 // ─── POST /api/upload-resume ──────────────────────────────────────────────────
+// GET catch to prevent 404 from prefetch
+router.get("/upload-resume", (req, res) => {
+    res.status(405).json({
+        error: "Method Not Allowed",
+        message: "Use POST /api/upload-resume with text and email in body"
+    });
+});
+
 router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req, res) => {
     const { text, email } = req.body;
     console.log(`[upload-resume] 📤 POST request received. User: ${req.user?.email || 'unknown'}`);
@@ -512,6 +551,14 @@ router.get("/compare", auth, async (req, res) => {
 });
 
 // ─── POST /api/jobs/match ─────────────────────────────────────────────────────
+// GET catch to prevent 404 from prefetch
+router.get("/jobs/match", (req, res) => {
+    res.status(405).json({
+        error: "Method Not Allowed",
+        message: "Use POST /api/jobs/match with skills array in body"
+    });
+});
+
 // Returns matching job titles + salary data based on skills.
 const JOB_DB = [
     { title: "Frontend Engineer",     requiredSkills: ["React", "TypeScript", "JavaScript", "CSS"],          salary: "$85k–$130k", demand: "High"      },

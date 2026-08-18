@@ -118,6 +118,7 @@ app.get("/health", (req, res) => {
         mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
         environment: process.env.NODE_ENV || "development",
         version: "2.0.1",
+        pythonUrl: pythonUrl, // Include for debugging
         services: {
             auth: "operational",
             analysis: "operational",
