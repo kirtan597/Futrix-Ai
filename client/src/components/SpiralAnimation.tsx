@@ -20,13 +20,15 @@ class AnimationController {
     private ctx: CanvasRenderingContext2D;
     private size: number;
     private stars: Star[] = [];
+    private cachedNewCameraZ = 0;
+    private cachedT2 = 0;
 
     private readonly changeEventTime = 0.32;
     readonly cameraZ = -400;
     private readonly cameraTravelDistance = 3400;
     private readonly startDotYOffset = 28;
     readonly viewZoom = 100;
-    private readonly numberOfStars = 5000;
+    private readonly numberOfStars = 2500;  // Reduced from 5000 for better performance
     private readonly trailLength = 80;
 
     constructor(_canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, _dpr: number, size: number) {
@@ -120,18 +122,21 @@ class AnimationController {
     }
 
     public showProjectedDot(position: Vector3D, sizeFactor: number) {
-        const t2 = this.constrain(this.map(this.time, this.changeEventTime, 1, 0, 1), 0, 1);
-        const newCameraZ = this.cameraZ + this.ease(Math.pow(t2, 1.2), 1.8) * this.cameraTravelDistance;
-        if (position.z > newCameraZ) {
-            const dotDepthFromCamera = position.z - newCameraZ;
+        // Use cached camera Z to reduce recalculation
+        if (position.z > this.cachedNewCameraZ) {
+            const dotDepthFromCamera = position.z - this.cachedNewCameraZ;
             const x = this.viewZoom * position.x / dotDepthFromCamera;
             const y = this.viewZoom * position.y / dotDepthFromCamera;
             const sw = 400 * sizeFactor / dotDepthFromCamera;
-            this.ctx.lineWidth = sw;
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, 0.5, 0, Math.PI * 2);
-            this.ctx.fill();
+            // Use fillRect instead of arc() + fill() for better performance
+            const radius = 0.5;
+            this.ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
         }
+    }
+
+    private updateCameraCache() {
+        this.cachedT2 = this.constrain(this.map(this.time, this.changeEventTime, 1, 0, 1), 0, 1);
+        this.cachedNewCameraZ = this.cameraZ + this.ease(Math.pow(this.cachedT2, 1.2), 1.8) * this.cameraTravelDistance;
     }
 
     private drawStartDot() {
@@ -146,6 +151,9 @@ class AnimationController {
         const ctx = this.ctx;
         if (!ctx) return;
 
+        // Update camera cache once per frame
+        this.updateCameraCache();
+
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, this.size, this.size);
 
@@ -153,9 +161,8 @@ class AnimationController {
         ctx.translate(this.size / 2, this.size / 2);
 
         const t1 = this.constrain(this.map(this.time, 0, this.changeEventTime + 0.25, 0, 1), 0, 1);
-        const t2 = this.constrain(this.map(this.time, this.changeEventTime, 1, 0, 1), 0, 1);
 
-        ctx.rotate(-Math.PI * this.ease(t2, 2.7));
+        ctx.rotate(-Math.PI * this.ease(this.cachedT2, 2.7));
         this.drawTrail(t1);
 
         ctx.fillStyle = 'white';
@@ -168,11 +175,13 @@ class AnimationController {
     }
 
     private drawTrail(t1: number) {
+        this.ctx.fillStyle = 'white';
+        // Batch operations by grouping similar stroke weights
+        const trails: { x: number; y: number; sw: number }[] = [];
+        
         for (let i = 0; i < this.trailLength; i++) {
             const f = this.map(i, 0, this.trailLength, 1.1, 0.1);
             const sw = (1.3 * (1 - t1) + 3.0 * Math.sin(Math.PI * t1)) * f;
-            this.ctx.fillStyle = 'white';
-            this.ctx.lineWidth = sw;
 
             const pathTime = t1 - 0.00015 * i;
             const position = this.spiralPath(pathTime);
@@ -185,8 +194,14 @@ class AnimationController {
                 i % 2 === 0,
             );
 
+            trails.push({ x: rotated.x, y: rotated.y, sw });
+        }
+
+        // Render batched trails
+        for (const trail of trails) {
+            this.ctx.lineWidth = trail.sw;
             this.ctx.beginPath();
-            this.ctx.arc(rotated.x, rotated.y, sw / 2, 0, Math.PI * 2);
+            this.ctx.arc(trail.x, trail.y, trail.sw / 2, 0, Math.PI * 2);
             this.ctx.fill();
         }
     }
