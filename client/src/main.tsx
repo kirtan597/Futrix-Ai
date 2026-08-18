@@ -19,8 +19,35 @@ if (!GOOGLE_CLIENT_ID) {
 console.log('[Futrix AI] Environment:', import.meta.env.MODE);
 console.log('[Futrix AI] Frontend URL:', window.location.origin);
 
-createRoot(document.getElementById('root')!).render(
-  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID ?? ''}>
-    <App />
-  </GoogleOAuthProvider>,
-)
+// Wait for Google Sign-In Client Library to load
+const waitForGoogleSignIn = () => {
+  return new Promise<void>((resolve) => {
+    if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+      console.log('[Futrix AI] ✅ Google Sign-In library loaded');
+      resolve();
+    } else {
+      const checkInterval = setInterval(() => {
+        if ((window as any).google?.accounts?.id) {
+          console.log('[Futrix AI] ✅ Google Sign-In library initialized');
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        console.warn('[Futrix AI] ⚠️ Google Sign-In library took too long to load');
+        resolve();
+      }, 5000);
+    }
+  });
+};
+
+// Initialize React after GSI library is ready
+waitForGoogleSignIn().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID ?? ''}>
+      <App />
+    </GoogleOAuthProvider>,
+  );
+});
