@@ -1,1 +1,193 @@
-/**\n * httpClient.ts\n * \n * Enterprise-grade HTTP client with:\n * - Automatic retry with exponential backoff + jitter\n * - Circuit breaker pattern\n * - Strict timeout enforcement\n * - Request/response interceptors\n * - Fallback strategies\n */\n\nimport axios, {\n  AxiosInstance,\n  AxiosError,\n  AxiosResponse,\n  InternalAxiosRequestConfig,\n} from 'axios';\nimport { CircuitBreaker, circuitBreakerRegistry } from './circuitBreaker';\nimport { captureException, trackEvent } from '../utils/monitoring';\nimport { useErrorStore } from '../store/useErrorStore';\n\nexport interface RetryConfig {\n  maxRetries: number;\n  initialDelay: number;\n  maxDelay: number;\n  backoffMultiplier: number;\n  jitterFactor: number;\n}\n\nexport interface TimeoutConfig {\n  default: number;\n  upload: number;\n  download: number;\n}\n\nexport interface HttpClientConfig {\n  baseURL: string;\n  timeout: TimeoutConfig;\n  retry: RetryConfig;\n  circuitBreaker: {\n    enabled: boolean;\n    failureThreshold: number;\n    timeout: number;\n  };\n}\n\n/**\n * Default configuration - production-grade\n */\nconst defaultConfig: HttpClientConfig = {\n  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',\n  timeout: {\n    default: 30000,  // 30 seconds\n    upload: 120000,  // 2 minutes for uploads\n    download: 60000, // 1 minute for downloads\n  },\n  retry: {\n    maxRetries: 3,\n    initialDelay: 500,\n    maxDelay: 5000,\n    backoffMultiplier: 2,\n    jitterFactor: 0.1,\n  },\n  circuitBreaker: {\n    enabled: true,\n    failureThreshold: 5,\n    timeout: 60000,\n  },\n};\n\n/**\n * Calculate exponential backoff with jitter\n * Formula: delay * (multiplier ^ attempt) + random(0, jitter)\n */\nfunction calculateBackoffDelay(\n  attempt: number,\n  config: RetryConfig\n): number {\n  const exponentialDelay = config.initialDelay * Math.pow(\n    config.backoffMultiplier,\n    attempt\n  );\n  \n  // Cap at maxDelay\n  const cappedDelay = Math.min(exponentialDelay, config.maxDelay);\n  \n  // Add jitter to prevent thundering herd\n  const jitter = Math.random() * config.jitterFactor * cappedDelay;\n  \n  return cappedDelay + jitter;\n}\n\n/**\n * Determine if an error is retryable\n */\nfunction isRetryableError(error: AxiosError): boolean {\n  if (!error.response) {\n    // Network errors are retryable\n    return true;\n  }\n\n  const status = error.response.status;\n\n  // Retryable HTTP status codes\n  const retryableStatuses = [\n    408, // Request Timeout\n    429, // Too Many Requests (rate limit)\n    500, // Internal Server Error\n    502, // Bad Gateway\n    503, // Service Unavailable\n    504, // Gateway Timeout\n  ];\n\n  return retryableStatuses.includes(status);\n}\n\n/**\n * Enterprise HTTP Client\n */\nexport class HttpClient {\n  private client: AxiosInstance;\n  private config: HttpClientConfig;\n  private circuitBreaker: CircuitBreaker | null;\n  private requestCount = 0;\n  private errorCount = 0;\n\n  constructor(customConfig?: Partial<HttpClientConfig>) {\n    this.config = { ...defaultConfig, ...customConfig };\n    \n    // Initialize axios instance\n    this.client = axios.create({\n      baseURL: this.config.baseURL,\n      timeout: this.config.timeout.default,\n      headers: {\n        'Content-Type': 'application/json',\n      },\n    });\n\n    // Initialize circuit breaker if enabled\n    this.circuitBreaker = this.config.circuitBreaker.enabled\n      ? circuitBreakerRegistry.getBreaker('api', {\n          failureThreshold: this.config.circuitBreaker.failureThreshold,\n          timeout: this.config.circuitBreaker.timeout,\n        })\n      : null;\n\n    // Setup interceptors\n    this.setupInterceptors();\n  }\n\n  /**\n   * Setup request/response interceptors\n   */\n  private setupInterceptors() {\n    // Request interceptor - add auth token\n    this.client.interceptors.request.use(\n      (config: InternalAxiosRequestConfig) => {\n        // Add auth token from localStorage if available\n        const token = localStorage.getItem('accessToken');\n        if (token) {\n          config.headers.Authorization = `Bearer ${token}`;\n        }\n\n        // Set appropriate timeout based on operation\n        if (config.url?.includes('upload')) {\n          config.timeout = this.config.timeout.upload;\n        } else if (config.url?.includes('download')) {\n          config.timeout = this.config.timeout.download;\n        }\n\n        return config;\n      },\n      (error) => Promise.reject(error)\n    );\n\n    // Response interceptor - handle errors\n    this.client.interceptors.response.use(\n      (response: AxiosResponse) => {\n        this.requestCount++;\n        return response;\n      },\n      (error: AxiosError) => {\n        this.errorCount++;\n        \n        // Handle 401 - redirect to login\n        if (error.response?.status === 401) {\n          localStorage.removeItem('accessToken');\n          window.location.href = '/login';\n        }\n\n        return Promise.reject(error);\n      }\n    );\n  }\n\n  /**\n   * Make a GET request with retry and circuit breaker\n   */\n  async get<T>(\n    url: string,\n    config?: InternalAxiosRequestConfig\n  ): Promise<AxiosResponse<T>> {\n    return this.requestWithRetry(() => this.client.get<T>(url, config));\n  }\n\n  /**\n   * Make a POST request with retry and circuit breaker\n   */\n  async post<T>(\n    url: string,\n    data?: any,\n    config?: InternalAxiosRequestConfig\n  ): Promise<AxiosResponse<T>> {\n    return this.requestWithRetry(() => this.client.post<T>(url, data, config));\n  }\n\n  /**\n   * Make a PUT request with retry and circuit breaker\n   */\n  async put<T>(\n    url: string,\n    data?: any,\n    config?: InternalAxiosRequestConfig\n  ): Promise<AxiosResponse<T>> {\n    return this.requestWithRetry(() => this.client.put<T>(url, data, config));\n  }\n\n  /**\n   * Make a DELETE request with retry and circuit breaker\n   */\n  async delete<T>(\n    url: string,\n    config?: InternalAxiosRequestConfig\n  ): Promise<AxiosResponse<T>> {\n    return this.requestWithRetry(() => this.client.delete<T>(url, config));\n  }\n\n  /**\n   * Core retry logic with exponential backoff + circuit breaker\n   */\n  private async requestWithRetry<T>(\n    requestFn: () => Promise<AxiosResponse<T>>\n  ): Promise<AxiosResponse<T>> {\n    // Use circuit breaker if enabled\n    if (this.circuitBreaker) {\n      return this.circuitBreaker.execute(\n        () => this.executeWithRetry(requestFn),\n        () => this.getFallbackResponse()\n      );\n    }\n\n    return this.executeWithRetry(requestFn);\n  }\n\n  /**\n   * Execute request with retry logic\n   */\n  private async executeWithRetry<T>(\n    requestFn: () => Promise<AxiosResponse<T>>\n  ): Promise<AxiosResponse<T>> {\n    let lastError: AxiosError | null = null;\n\n    for (let attempt = 0; attempt < this.config.retry.maxRetries; attempt++) {\n      try {\n        console.log(`[HttpClient] Attempt ${attempt + 1}/${this.config.retry.maxRetries}`);\n        const response = await requestFn();\n        \n        // Success - reset error tracking\n        trackEvent('http_request_success', {\n          attempts: attempt + 1,\n          url: response.config.url,\n        });\n\n        return response;\n      } catch (error) {\n        lastError = error as AxiosError;\n\n        // Check if error is retryable\n        if (!isRetryableError(lastError) || attempt === this.config.retry.maxRetries - 1) {\n          // Non-retryable error or last attempt\n          console.error(`[HttpClient] Request failed (attempt ${attempt + 1}):`, lastError.message);\n          throw lastError;\n        }\n\n        // Calculate backoff delay\n        const delay = calculateBackoffDelay(attempt, this.config.retry);\n        console.warn(\n          `[HttpClient] Retry in ${delay.toFixed(0)}ms (attempt ${attempt + 1}/${this.config.retry.maxRetries})`\n        );\n\n        // Wait before retry\n        await new Promise(resolve => setTimeout(resolve, delay));\n      }\n    }\n\n    throw lastError;\n  }\n\n  /**\n   * Get fallback response when circuit is open\n   */\n  private async getFallbackResponse<T>(): Promise<AxiosResponse<T>> {\n    console.warn('[HttpClient] Circuit breaker open, using fallback');\n    \n    // Update error store to show offline message\n    useErrorStore.getState().setError({\n      message: 'Service temporarily unavailable. Please try again later.',\n      code: 'SERVICE_UNAVAILABLE',\n      severity: 'warning',\n    });\n\n    return Promise.reject(new Error('Circuit breaker is open'));\n  }\n\n  /**\n   * Get client metrics\n   */\n  getMetrics() {\n    return {\n      totalRequests: this.requestCount,\n      totalErrors: this.errorCount,\n      errorRate: this.requestCount > 0 \n        ? ((this.errorCount / this.requestCount) * 100).toFixed(2) + '%'\n        : '0%',\n      circuitBreakerState: this.circuitBreaker?.getState() ?? 'disabled',\n    };\n  }\n}\n\n// Export singleton instance\nexport const httpClient = new HttpClient();\n\nexport default httpClient;\n
+/**
+ * httpClient.ts
+ * Enterprise-grade HTTP client with retry and circuit breaker
+ */
+
+import axios, {
+    AxiosInstance,
+    AxiosError,
+    AxiosResponse,
+    InternalAxiosRequestConfig,
+} from 'axios';
+import { CircuitBreaker, circuitBreakerRegistry } from './circuitBreaker';
+import { useErrorStore } from '../store/useErrorStore';
+
+export interface RetryConfig {
+    maxRetries: number;
+    initialDelay: number;
+    maxDelay: number;
+    backoffMultiplier: number;
+    jitterFactor: number;
+}
+
+export interface TimeoutConfig {
+    default: number;
+    upload: number;
+    download: number;
+}
+
+export interface HttpClientConfig {
+    baseURL: string;
+    timeout: TimeoutConfig;
+    retry: RetryConfig;
+    circuitBreaker: {
+        enabled: boolean;
+        failureThreshold: number;
+        timeout: number;
+    };
+}
+
+const defaultConfig: HttpClientConfig = {
+    baseURL: import.meta.env.VITE_API_URL || '',
+    timeout: {
+        default: 30000,
+        upload: 120000,
+        download: 60000,
+    },
+    retry: {
+        maxRetries: 3,
+        initialDelay: 500,
+        maxDelay: 5000,
+        backoffMultiplier: 2,
+        jitterFactor: 0.1,
+    },
+    circuitBreaker: {
+        enabled: true,
+        failureThreshold: 5,
+        timeout: 60000,
+    },
+};
+
+function calculateBackoffDelay(attempt: number, config: RetryConfig): number {
+    const exponentialDelay = config.initialDelay * Math.pow(config.backoffMultiplier, attempt);
+    const cappedDelay = Math.min(exponentialDelay, config.maxDelay);
+    const jitter = Math.random() * config.jitterFactor * cappedDelay;
+    return cappedDelay + jitter;
+}
+
+function isRetryableError(error: AxiosError): boolean {
+    if (!error.response) return true;
+    const status = error.response.status;
+    return [408, 429, 500, 502, 503, 504].includes(status);
+}
+
+export class HttpClient {
+    private client: AxiosInstance;
+    private config: HttpClientConfig;
+    private circuitBreaker: CircuitBreaker | null;
+    private requestCount = 0;
+    private errorCount = 0;
+
+    constructor(customConfig?: Partial<HttpClientConfig>) {
+        this.config = { ...defaultConfig, ...customConfig };
+        this.client = axios.create({
+            baseURL: this.config.baseURL,
+            timeout: this.config.timeout.default,
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        this.circuitBreaker = this.config.circuitBreaker.enabled
+            ? circuitBreakerRegistry.getBreaker('api', {
+                failureThreshold: this.config.circuitBreaker.failureThreshold,
+                timeout: this.config.circuitBreaker.timeout,
+            })
+            : null;
+
+        this.setupInterceptors();
+    }
+
+    private setupInterceptors() {
+        this.client.interceptors.request.use(
+            (config: InternalAxiosRequestConfig) => {
+                const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+                if (config.url?.includes('upload')) {
+                    config.timeout = this.config.timeout.upload;
+                }
+                return config;
+            },
+            (error) => Promise.reject(error)
+        );
+
+        this.client.interceptors.response.use(
+            (response: AxiosResponse) => {
+                this.requestCount++;
+                return response;
+            },
+            (error: AxiosError) => {
+                this.errorCount++;
+                return Promise.reject(error);
+            }
+        );
+    }
+
+    async get<T>(url: string, config?: InternalAxiosRequestConfig): Promise<AxiosResponse<T>> {
+        return this.requestWithRetry(() => this.client.get<T>(url, config));
+    }
+
+    async post<T>(url: string, data?: any, config?: InternalAxiosRequestConfig): Promise<AxiosResponse<T>> {
+        return this.requestWithRetry(() => this.client.post<T>(url, data, config));
+    }
+
+    async put<T>(url: string, data?: any, config?: InternalAxiosRequestConfig): Promise<AxiosResponse<T>> {
+        return this.requestWithRetry(() => this.client.put<T>(url, data, config));
+    }
+
+    async delete<T>(url: string, config?: InternalAxiosRequestConfig): Promise<AxiosResponse<T>> {
+        return this.requestWithRetry(() => this.client.delete<T>(url, config));
+    }
+
+    private async requestWithRetry<T>(requestFn: () => Promise<AxiosResponse<T>>): Promise<AxiosResponse<T>> {
+        if (this.circuitBreaker) {
+            return this.circuitBreaker.execute(
+                () => this.executeWithRetry(requestFn),
+                () => this.getFallbackResponse()
+            );
+        }
+        return this.executeWithRetry(requestFn);
+    }
+
+    private async executeWithRetry<T>(requestFn: () => Promise<AxiosResponse<T>>): Promise<AxiosResponse<T>> {
+        let lastError: AxiosError | null = null;
+
+        for (let attempt = 0; attempt < this.config.retry.maxRetries; attempt++) {
+            try {
+                const response = await requestFn();
+                return response;
+            } catch (error) {
+                lastError = error as AxiosError;
+                if (!isRetryableError(lastError) || attempt === this.config.retry.maxRetries - 1) {
+                    throw lastError;
+                }
+                const delay = calculateBackoffDelay(attempt, this.config.retry);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        throw lastError;
+    }
+
+    private async getFallbackResponse<T>(): Promise<AxiosResponse<T>> {
+        useErrorStore.getState().setError({
+            message: 'Service temporarily unavailable. Please try again later.',
+            code: 'SERVICE_UNAVAILABLE',
+            severity: 'warning',
+        });
+        return Promise.reject(new Error('Circuit breaker is open'));
+    }
+
+    getMetrics() {
+        return {
+            totalRequests: this.requestCount,
+            totalErrors: this.errorCount,
+            errorRate: this.requestCount > 0 
+                ? ((this.errorCount / this.requestCount) * 100).toFixed(2) + '%'
+                : '0%',
+            circuitBreakerState: this.circuitBreaker?.getState() ?? 'disabled',
+        };
+    }
+}
+
+export const httpClient = new HttpClient();
+export default httpClient;

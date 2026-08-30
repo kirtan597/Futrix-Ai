@@ -7,9 +7,7 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
 import LinearProgress from '@mui/material/LinearProgress';
 
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
@@ -18,7 +16,8 @@ import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import EastIcon from '@mui/icons-material/East';
-import { extractResumeText } from '../services/resumeParser';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { extractResumeText, validateResumeText } from '../services/resumeParser';
 
 const STEPS = [
     { num: '01', text: 'AI scans your exact text for known technologies' },
@@ -28,10 +27,10 @@ const STEPS = [
 ];
 
 const TIPS = [
-    'Include all technologies you have used',
-    'Mention job titles and project names',
-    'Add tools, frameworks, and methodologies',
-    'Include cloud services (AWS, Azure, GCP)',
+    'Include all technologies, tools, and languages you have used',
+    'Mention past job titles, projects, and responsibilities',
+    'Add frameworks, libraries, and development methodologies',
+    'Include cloud providers and DevOps tools (AWS, Docker, CI/CD)',
 ];
 
 // ─── Glass card ───────────────────────────────────────────────────────────────
@@ -50,12 +49,12 @@ function Panel({ children, sx = {} }: { children: React.ReactNode; sx?: object }
 }
 
 const ANALYZING_STEPS = [
-    'Scanning your resume...',
-    'Detecting technologies...',
-    'Analyzing skills...',
-    'Identifying gaps...',
-    'Computing readiness score...',
-    'Generating your roadmap...',
+    'Validating resume content...',
+    'Scanning for technical skills...',
+    'Analyzing stack & detecting skill gaps...',
+    'Computing career readiness score...',
+    'Generating personalized roadmap...',
+    'Saving analysis results...',
 ];
 
 // ─── Analysis loading overlay ─────────────────────────────────────────────────
@@ -65,7 +64,7 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
 
     React.useEffect(() => {
         if (!visible) { setStep(0); setElapsed(0); return; }
-        const stepTimer = setInterval(() => setStep(prev => Math.min(prev + 1, ANALYZING_STEPS.length - 1)), 5000);
+        const stepTimer = setInterval(() => setStep(prev => Math.min(prev + 1, ANALYZING_STEPS.length - 1)), 2500);
         const secTimer  = setInterval(() => setElapsed(prev => prev + 1), 1000);
         return () => { clearInterval(stepTimer); clearInterval(secTimer); };
     }, [visible]);
@@ -73,7 +72,7 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
     if (!visible) return null;
 
     const isSlow = elapsed > 15;
-    const messageOverride = isSlow ? 'This is taking longer than expected...' : undefined;
+    const messageOverride = isSlow ? 'Cold start: AI engine is spinning up, please wait...' : undefined;
 
     return (
         <Box sx={{
@@ -97,20 +96,20 @@ function AnalyzingOverlay({ visible }: { visible: boolean }) {
                 <Typography sx={{ fontWeight: 700, color: '#fff', fontSize: 'clamp(1rem, 3vw, 1.1rem)', letterSpacing: '-0.02em', mb: 1 }}>
                     Analyzing with AI
                 </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: 'clamp(0.8rem, 2.5vw, 0.85rem)', mb: 0.5 }}>
+                <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: 'clamp(0.85rem, 2.5vw, 0.9rem)', mb: 0.5, fontWeight: 500 }}>
                     {messageOverride || ANALYZING_STEPS[step]}
                 </Typography>
                 
-                <Typography sx={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem', mb: 2 }}>
-                    {elapsed}s{isSlow ? ' — still processing' : ''}
+                <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', mb: 2 }}>
+                    {elapsed}s elapsed{isSlow ? ' — still processing' : ''}
                 </Typography>
                 <Box sx={{ width: '100%', mx: 'auto' }}>
                     <LinearProgress
                         variant="indeterminate"
                         sx={{
-                            height: 2, borderRadius: 99,
+                            height: 3, borderRadius: 99,
                             background: 'rgba(255,255,255,0.05)',
-                            '& .MuiLinearProgress-bar': { background: 'rgba(255,255,255,0.5)' },
+                            '& .MuiLinearProgress-bar': { background: 'rgba(255,255,255,0.6)' },
                         }}
                     />
                 </Box>
@@ -125,52 +124,65 @@ export default function UploadResume() {
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+
     const getErrorMessage = (err: unknown, fallback: string) =>
         err instanceof Error ? err.message : fallback;
 
     // ── Dropzone ──
-    const onDrop = useCallback((acceptedFiles: File[]) => {
+    const onDrop = useCallback(async (acceptedFiles: File[], fileRejections: any[]) => {
+        if (fileRejections && fileRejections.length > 0) {
+            setError('Please upload a plain text (.txt) file under 5MB.');
+            return;
+        }
+
         const file = acceptedFiles[0];
-        if (file && file.type === 'text/plain') {
-            const reader = new FileReader();
-            reader.onload = (e) => setResumeText((e.target?.result as string) || '');
-            reader.readAsText(file);
+        if (!file) return;
+
+        setError('');
+        try {
+            const text = await extractResumeText(file);
+            setResumeText(text);
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Failed to read file'));
         }
     }, []);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         noClick: true,
+        maxSize: 5 * 1024 * 1024,
         accept: { 'text/plain': ['.txt'] },
     });
 
-    const handleUpload = async (e: React.FormEvent) => {
-        e.preventDefault();
-        console.log('[UploadResume] Form submitted with:', { textLength: resumeText.length, email: localStorage.getItem('userEmail') });
+    const handleUpload = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        
+        const validation = validateResumeText(resumeText);
+        if (!validation.valid) {
+            setError(validation.message);
+            return;
+        }
+
         setLoading(true);
         setError('');
-        const email = localStorage.getItem('userEmail') || '';
+        
         try {
-            console.log('[UploadResume] Calling API with POST...');
-            const data = await apiService.post('/api/upload-resume', { text: resumeText, email });
-            console.log('[UploadResume] ✅ Success:', data);
+            const data = await apiService.post('/api/upload-resume', { text: resumeText.trim() });
             localStorage.setItem('analysisResult', JSON.stringify(data));
             navigate('/dashboard');
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : String(err);
             console.error('[UploadResume] ❌ Error:', errorMsg);
-            localStorage.removeItem('analysisResult');
             
-            // Provide user-friendly error messages
             let displayError = errorMsg;
-            if (errorMsg.includes('Service') || errorMsg.includes('unavailable') || errorMsg.includes('503')) {
-                displayError = '🔄 The AI engine is busy. Please try again in a few moments.';
-            } else if (errorMsg.includes('timeout')) {
-                displayError = '⏱️ Request took too long. Your network may be slow.';
-            } else if (errorMsg.includes('cannot reach') || errorMsg.includes('Connection') || errorMsg.includes('Failed to fetch')) {
-                displayError = '📡 Cannot reach the server. Check your internet connection.';
-            } else if (errorMsg.includes('Auth') || errorMsg.includes('Session')) {
-                displayError = '🔐 Your session expired. Please log in again.';
+            if (errorMsg.includes('429') || errorMsg.includes('Rate limit') || errorMsg.includes('analyses per hour')) {
+                displayError = '⏳ Upload limit reached: maximum 5 analyses per hour. Please wait before uploading again.';
+            } else if (errorMsg.includes('503') || errorMsg.includes('Service') || errorMsg.includes('unavailable') || errorMsg.includes('offline')) {
+                displayError = '🔄 The AI engine is temporarily busy or spinning up. Please click Retry below in a moment.';
+            } else if (errorMsg.includes('timeout') || errorMsg.includes('504')) {
+                displayError = '⏱️ The analysis request timed out. Please click Retry to try again.';
+            } else if (errorMsg.includes('401') || errorMsg.includes('Session') || errorMsg.includes('Token')) {
+                displayError = '🔐 Your session has expired. Please log in again.';
             }
             
             setError(displayError);
@@ -180,7 +192,7 @@ export default function UploadResume() {
     };
 
     const charCount = resumeText.trim().length;
-    const isReady = charCount >= 50;
+    const isReady = charCount >= 50 && charCount <= 50000;
 
     return (
         <>
@@ -270,7 +282,6 @@ export default function UploadResume() {
                                             onChange={async (ev) => {
                                                 const f = ev.target.files?.[0];
                                                 if (!f) return;
-                                                setLoading(true);
                                                 setError('');
                                                 try {
                                                     const text = await extractResumeText(f);
@@ -278,7 +289,6 @@ export default function UploadResume() {
                                                 } catch (err: unknown) {
                                                     setError(getErrorMessage(err, 'Failed to read file'));
                                                 } finally {
-                                                    setLoading(false);
                                                     ev.currentTarget.value = '';
                                                 }
                                             }}
@@ -295,7 +305,7 @@ export default function UploadResume() {
                                         <Button
                                             variant="outlined"
                                             size="small"
-                                            onClick={() => setResumeText('')}
+                                            onClick={() => { setResumeText(''); setError(''); }}
                                             sx={{ fontSize: '0.75rem', borderRadius: '8px', px: 1.5 }}
                                             disabled={!resumeText}
                                         >
@@ -313,9 +323,12 @@ export default function UploadResume() {
                                 minRows={13}
                                 maxRows={20}
                                 fullWidth
-                                placeholder={`Paste your resume text here...\n\ne.g.,  Skills: React, Python, Docker\nExperience: Software Engineer at...`}
+                                placeholder={`Paste your resume text here...\n\ne.g.,  Skills: React, TypeScript, Python, Docker, AWS\nExperience: Software Engineer at Tech Corp (2021-Present)\n- Built scalable REST APIs using Node.js and PostgreSQL\n- Designed cloud infrastructure with Docker and Kubernetes`}
                                 value={resumeText}
-                                onChange={(e) => setResumeText(e.target.value)}
+                                onChange={(e) => {
+                                    setResumeText(e.target.value);
+                                    if (error && e.target.value.trim().length >= 50) setError('');
+                                }}
                                 required
                                 sx={{
                                     mb: 2,
@@ -326,7 +339,7 @@ export default function UploadResume() {
                                     },
                                     '& .MuiOutlinedInput-input': {
                                         '@media (max-width:600px)': {
-                                            fontSize: '16px !important', // Prevent iOS zoom
+                                            fontSize: '16px !important',
                                             minHeight: '120px',
                                             maxHeight: '300px',
                                         },
@@ -338,18 +351,42 @@ export default function UploadResume() {
                                 }}
                             />
 
-                            {/* Char count */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
-                                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)' }}>
-                                    Drag & drop a .txt file, or paste below
+                            {/* Char count & minimum validation status */}
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                                <Typography sx={{ 
+                                    fontSize: '0.75rem', 
+                                    color: charCount < 50 ? 'rgba(248,113,113,0.8)' : 'rgba(134,239,172,0.8)',
+                                    fontWeight: 600
+                                }}>
+                                    {charCount === 0 
+                                        ? 'Minimum 50 characters required' 
+                                        : charCount < 50 
+                                            ? `Need ${50 - charCount} more character${50 - charCount > 1 ? 's' : ''} (minimum 50 required)`
+                                            : '✓ Ready for analysis'}
                                 </Typography>
-                                <Typography sx={{ fontSize: '0.72rem', color: charCount > 50 ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.2)' }}>
-                                    {charCount} chars
+                                <Typography sx={{ fontSize: '0.72rem', color: isReady ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)' }}>
+                                    {charCount} / 50,000 chars
                                 </Typography>
                             </Box>
 
                             {error && (
-                                <Alert severity="error" sx={{ mb: 2.5 }}>
+                                <Alert 
+                                    severity="error" 
+                                    sx={{ mb: 2.5 }}
+                                    action={
+                                        isReady ? (
+                                            <Button 
+                                                color="inherit" 
+                                                size="small" 
+                                                startIcon={<RefreshIcon />}
+                                                onClick={() => handleUpload()}
+                                                sx={{ textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                Retry
+                                            </Button>
+                                        ) : undefined
+                                    }
+                                >
                                     {error}
                                 </Alert>
                             )}
@@ -358,88 +395,66 @@ export default function UploadResume() {
                                 type="submit"
                                 variant="contained"
                                 fullWidth
-                                size="large"
                                 disabled={loading || !isReady}
                                 endIcon={<EastIcon />}
-                                sx={{ py: 1.55, fontSize: '0.9rem', borderRadius: '12px', fontWeight: 700 }}
+                                sx={{
+                                    py: 1.5,
+                                    fontSize: '0.9rem',
+                                    fontWeight: 700,
+                                    borderRadius: '10px',
+                                    textTransform: 'none',
+                                    background: isReady ? '#fff' : 'rgba(255,255,255,0.1)',
+                                    color: isReady ? '#000' : 'rgba(255,255,255,0.3)',
+                                    '&:hover': {
+                                        background: isReady ? '#e5e5e5' : 'rgba(255,255,255,0.1)',
+                                    },
+                                }}
                             >
-                                Generate AI Career Report
+                                {loading ? 'Analyzing Resume...' : 'Analyze Resume'}
                             </Button>
                         </Box>
                     </Panel>
 
-                    {/* ── Sidebar ── */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: 2 } }}>
-
-                        {/* What happens next */}
-                        <Panel sx={{ p: 2.5 }}>
-                            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 2.5 }}>
-                                What happens next
+                    {/* ── Sidebar cards ── */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {/* How it works */}
+                        <Panel sx={{ p: 3 }}>
+                            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 2 }}>
+                                How It Works
                             </Typography>
-                            {STEPS.map(({ num, text }) => (
-                                <Box key={num} sx={{ display: 'flex', gap: 1.8, mb: 1.8, alignItems: 'flex-start' }}>
-                                    <Typography sx={{
-                                        fontWeight: 800, fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)',
-                                        minWidth: 26, fontFamily: 'monospace',
-                                        background: 'rgba(255,255,255,0.04)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        borderRadius: '5px',
-                                        px: 0.7, py: 0.3, textAlign: 'center',
-                                    }}>
-                                        {num}
-                                    </Typography>
-                                    <Typography sx={{ fontSize: '0.81rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>
-                                        {text}
-                                    </Typography>
-                                </Box>
-                            ))}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {STEPS.map((s) => (
+                                    <Box key={s.num} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                                        <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', mt: 0.2 }}>
+                                            {s.num}
+                                        </Typography>
+                                        <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                                            {s.text}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
                         </Panel>
 
                         {/* Tips */}
-                        <Panel sx={{ p: 2.5 }}>
+                        <Panel sx={{ p: 3 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                <TipsAndUpdatesOutlinedIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.3)' }} />
-                                <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>
-                                    Tips for best results
+                                <TipsAndUpdatesOutlinedIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }} />
+                                <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                    Tips for Best Results
                                 </Typography>
                             </Box>
-                            <Divider sx={{ mb: 2 }} />
-                            {TIPS.map((tip) => (
-                                <Box key={tip} sx={{ display: 'flex', gap: 1.2, mb: 1.3, alignItems: 'flex-start' }}>
-                                    <Box sx={{
-                                        width: 4, height: 4, borderRadius: '50%',
-                                        background: 'rgba(255,255,255,0.25)',
-                                        flexShrink: 0, mt: '8px',
-                                    }} />
-                                    <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
-                                        {tip}
-                                    </Typography>
-                                </Box>
-                            ))}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                                {TIPS.map((t) => (
+                                    <Box key={t} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                        <Box sx={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', mt: 0.8, flexShrink: 0 }} />
+                                        <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+                                            {t}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
                         </Panel>
-
-                        {/* Upload indicator */}
-                        {charCount > 0 && (
-                            <Panel sx={{ p: 2, borderColor: 'rgba(255,255,255,0.1)' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 1.5 }}>
-                                    <CircularProgress
-                                        variant="determinate"
-                                        value={Math.min((charCount / 50) * 100, 100)}
-                                        size={26}
-                                        thickness={3}
-                                        sx={{ color: 'rgba(255,255,255,0.5)' }}
-                                    />
-                                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>
-                                        {isReady ? 'Ready to analyze' : `Minimum 50 chars (${50 - charCount} more)`}
-                                    </Typography>
-                                </Box>
-                                <LinearProgress
-                                    variant="determinate"
-                                    value={Math.min((charCount / 50) * 100, 100)}
-                                    sx={{ height: 2, borderRadius: 99 }}
-                                />
-                            </Panel>
-                        )}
                     </Box>
                 </Box>
             </Box>

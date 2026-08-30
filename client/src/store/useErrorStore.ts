@@ -1,1 +1,109 @@
-/**\n * useErrorStore.ts\n * \n * Global error state management using Zustand\n * Handles application-level errors, API failures, and network issues\n */\n\nimport { create } from 'zustand';\n\nexport type ErrorSeverity = 'info' | 'warning' | 'error' | 'critical';\n\nexport interface AppError {\n  message: string;\n  code?: string;\n  severity: ErrorSeverity;\n  timestamp?: Date;\n  errorId?: string;\n  context?: Record<string, any>;\n  retryable?: boolean;\n  action?: {\n    label: string;\n    handler: () => void | Promise<void>;\n  };\n}\n\nexport interface ErrorState {\n  // Current error\n  error: AppError | null;\n  errors: AppError[];\n  \n  // Error management\n  setError: (error: AppError | null) => void;\n  addError: (error: AppError) => void;\n  clearError: () => void;\n  clearAllErrors: () => void;\n  \n  // Error queue\n  dismissError: (index: number) => void;\n  hasErrors: () => boolean;\n  getLatestError: () => AppError | null;\n  \n  // State queries\n  isNetworkError: () => boolean;\n  isServiceUnavailable: () => boolean;\n  isRateLimited: () => boolean;\n}\n\n/**\n * Global error store\n * \n * Usage:\n * const { error, setError, clearError } = useErrorStore();\n * \n * // Set an error\n * setError({\n *   message: 'Failed to load data',\n *   code: 'NETWORK_ERROR',\n *   severity: 'error',\n *   retryable: true,\n *   action: {\n *     label: 'Retry',\n *     handler: () => retryOperation(),\n *   },\n * });\n * \n * // Clear errors\n * clearError();\n */\nexport const useErrorStore = create<ErrorState>((set, get) => ({\n  error: null,\n  errors: [],\n\n  setError: (error: AppError | null) => {\n    if (error) {\n      set({\n        error: {\n          ...error,\n          timestamp: error.timestamp || new Date(),\n          errorId: error.errorId || `ERR_${Date.now()}`,\n        },\n      });\n    } else {\n      set({ error: null });\n    }\n  },\n\n  addError: (error: AppError) => {\n    const newError = {\n      ...error,\n      timestamp: error.timestamp || new Date(),\n      errorId: error.errorId || `ERR_${Date.now()}`,\n    };\n\n    set(state => ({\n      error: newError,\n      errors: [newError, ...state.errors].slice(0, 10), // Keep last 10 errors\n    }));\n  },\n\n  clearError: () => {\n    set({ error: null });\n  },\n\n  clearAllErrors: () => {\n    set({ error: null, errors: [] });\n  },\n\n  dismissError: (index: number) => {\n    set(state => ({\n      errors: state.errors.filter((_, i) => i !== index),\n    }));\n  },\n\n  hasErrors: () => {\n    const { errors } = get();\n    return errors.length > 0;\n  },\n\n  getLatestError: () => {\n    const { errors } = get();\n    return errors[0] || null;\n  },\n\n  isNetworkError: () => {\n    const { error } = get();\n    return error?.code === 'NETWORK_ERROR' || error?.code === 'ECONNREFUSED';\n  },\n\n  isServiceUnavailable: () => {\n    const { error } = get();\n    return (\n      error?.code === 'SERVICE_UNAVAILABLE' ||\n      error?.code === 'CIRCUIT_OPEN' ||\n      error?.message.includes('503')\n    );\n  },\n\n  isRateLimited: () => {\n    const { error } = get();\n    return error?.code === 'RATE_LIMITED' || error?.message.includes('429');\n  },\n}));\n\nexport default useErrorStore;\n
+import { create } from 'zustand';
+
+export type ErrorSeverity = 'info' | 'warning' | 'error' | 'critical';
+
+export interface AppError {
+    message: string;
+    code?: string;
+    severity: ErrorSeverity;
+    timestamp?: Date;
+    errorId?: string;
+    context?: Record<string, any>;
+    retryable?: boolean;
+    action?: {
+        label: string;
+        handler: () => void | Promise<void>;
+    };
+}
+
+export interface ErrorState {
+    error: AppError | null;
+    errors: AppError[];
+    setError: (error: AppError | null) => void;
+    addError: (error: AppError) => void;
+    clearError: () => void;
+    clearAllErrors: () => void;
+    dismissError: (index: number) => void;
+    hasErrors: () => boolean;
+    getLatestError: () => AppError | null;
+    isNetworkError: () => boolean;
+    isServiceUnavailable: () => boolean;
+    isRateLimited: () => boolean;
+}
+
+export const useErrorStore = create<ErrorState>((set, get) => ({
+    error: null,
+    errors: [],
+
+    setError: (error: AppError | null) => {
+        if (error) {
+            set({
+                error: {
+                    ...error,
+                    timestamp: error.timestamp || new Date(),
+                    errorId: error.errorId || `ERR_${Date.now()}`,
+                },
+            });
+        } else {
+            set({ error: null });
+        }
+    },
+
+    addError: (error: AppError) => {
+        const newError = {
+            ...error,
+            timestamp: error.timestamp || new Date(),
+            errorId: error.errorId || `ERR_${Date.now()}`,
+        };
+
+        set((state) => ({
+            error: newError,
+            errors: [newError, ...state.errors].slice(0, 10),
+        }));
+    },
+
+    clearError: () => {
+        set({ error: null });
+    },
+
+    clearAllErrors: () => {
+        set({ error: null, errors: [] });
+    },
+
+    dismissError: (index: number) => {
+        set((state) => ({
+            errors: state.errors.filter((_, i) => i !== index),
+        }));
+    },
+
+    hasErrors: () => {
+        const { errors } = get();
+        return errors.length > 0;
+    },
+
+    getLatestError: () => {
+        const { errors } = get();
+        return errors[0] || null;
+    },
+
+    isNetworkError: () => {
+        const { error } = get();
+        return error?.code === 'NETWORK_ERROR' || error?.code === 'ECONNREFUSED';
+    },
+
+    isServiceUnavailable: () => {
+        const { error } = get();
+        return (
+            error?.code === 'SERVICE_UNAVAILABLE' ||
+            error?.code === 'CIRCUIT_OPEN' ||
+            (error?.message ? error.message.includes('503') : false)
+        );
+    },
+
+    isRateLimited: () => {
+        const { error } = get();
+        return error?.code === 'RATE_LIMITED' || (error?.message ? error.message.includes('429') : false);
+    },
+}));
+
+export default useErrorStore;

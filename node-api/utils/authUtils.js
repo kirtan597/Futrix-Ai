@@ -3,32 +3,36 @@ const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET || "FutrixAiSuperSecretKey_32chars!!!";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "FutrixAiRefreshSecretKey_32chars!!!";
 
+if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET)) {
+    console.warn("⚠️  [Security Warning] JWT_SECRET or JWT_REFRESH_SECRET is not set in environment. Using default fallback is insecure for production.");
+}
+
 /**
- * Generate access token (short-lived)
+ * Generate access token (short-lived: 15 minutes)
  */
 function generateAccessToken(user) {
     return jwt.sign(
         { 
-            id: user._id, 
+            id: user._id ? user._id.toString() : user.id, 
             email: user.email, 
             role: "user" 
         },
         JWT_SECRET,
-        { expiresIn: "15m" } // 15 minutes
+        { expiresIn: "15m" }
     );
 }
 
 /**
- * Generate refresh token (long-lived)
+ * Generate refresh token (long-lived: 7 days)
  */
 function generateRefreshToken(user) {
     return jwt.sign(
         { 
-            id: user._id, 
+            id: user._id ? user._id.toString() : user.id, 
             email: user.email 
         },
         JWT_REFRESH_SECRET,
-        { expiresIn: "7d" } // 7 days
+        { expiresIn: "7d" }
     );
 }
 
@@ -36,7 +40,7 @@ function generateRefreshToken(user) {
  * Verify access token
  */
 function verifyAccessToken(token) {
-    return jwt.verify(token, JWT_SECRET); // let original error (TokenExpiredError etc.) propagate
+    return jwt.verify(token, JWT_SECRET);
 }
 
 /**

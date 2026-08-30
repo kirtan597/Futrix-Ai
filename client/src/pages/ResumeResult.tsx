@@ -19,6 +19,7 @@ import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import ScoreRing from '../components/ScoreRing';
 import SkillRadar from '../components/charts/SkillRadar';
 import GapDonut from '../components/charts/GapDonut';
+import apiService from '../services/apiService';
 
 interface AnalysisData {
     skills: string[];
@@ -96,10 +97,33 @@ export default function ResumeResult() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const stored = localStorage.getItem('analysisResult');
-        if (stored) { try { setData(JSON.parse(stored)); } catch { /* */ } }
-        const t = setTimeout(() => setMounted(true), 80);
-        return () => clearTimeout(t);
+        const loadAnalysis = async () => {
+            const stored = localStorage.getItem('analysisResult');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (parsed && typeof parsed === 'object') {
+                        setData(parsed);
+                        setMounted(true);
+                        return;
+                    }
+                } catch { /* */ }
+            }
+
+            try {
+                const history = await apiService.get<any[]>('/api/history');
+                if (Array.isArray(history) && history.length > 0) {
+                    setData(history[0]);
+                    localStorage.setItem('analysisResult', JSON.stringify(history[0]));
+                }
+            } catch (err) {
+                console.error('[ResumeResult] Failed to fetch history:', err);
+            } finally {
+                setMounted(true);
+            }
+        };
+
+        loadAnalysis();
     }, []);
 
     if (!data) {

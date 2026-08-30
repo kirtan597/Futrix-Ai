@@ -12,7 +12,7 @@
  * - Integrates with error store for UI state management
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { captureException } from '../utils/monitoring';
 import { useErrorStore } from '../store/useErrorStore';
 import ErrorFallback from './ErrorFallback';
@@ -31,17 +31,7 @@ interface State {
   retryCount: number;
 }
 
-/**
- * Global Error Boundary Component
- * 
- * Usage:
- * <RootErrorBoundary>
- *   <YourApp />
- * </RootErrorBoundary>
- */
 export class RootErrorBoundary extends Component<Props, State> {
-  private resetTimeout: NodeJS.Timeout | null = null;
-
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -54,8 +44,7 @@ export class RootErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    // Update state so the next render will show the fallback UI
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {

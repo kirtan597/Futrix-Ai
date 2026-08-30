@@ -52,9 +52,8 @@ function startWarmer() {
  * Make a warm-up request to the Python service
  */
 async function warmPythonService() {
+    const startTime = Date.now();
     try {
-        const startTime = Date.now();
-        
         const response = await axios.get(`${PYTHON_URL}/`, {
             timeout: 10_000,
             headers: {

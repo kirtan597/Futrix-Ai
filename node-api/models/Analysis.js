@@ -22,6 +22,37 @@ const analysisSchema = new mongoose.Schema({
             skills_needed: [String],
         },
     ],
+    skill_weights: [
+        {
+            name:             String,
+            category:         String,
+            user_proficiency: Number,
+            benchmark:        Number,
+            is_gap:           Boolean,
+            weight:           Number,
+        }
+    ],
+    category_distribution: [
+        {
+            category:        String,
+            detected:        Number,
+            gaps:            Number,
+            total_benchmark: Number,
+            coverage_pct:    Number,
+        }
+    ],
+    readiness_trajectory: {
+        points: [
+            {
+                milestone: String,
+                step:      String,
+                score:     Number,
+                gain:      Number,
+            }
+        ],
+        projected_gain: Number,
+        target_score:   Number,
+    },
 }, { timestamps: true });
 
 // Index for history queries sorted by date

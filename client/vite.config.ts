@@ -18,9 +18,8 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    // Required: allows Google OAuth popup to postMessage back to the app
     headers: {
-      'Cross-Origin-Opener-Policy':   'same-origin-allow-popups',
+      'Cross-Origin-Opener-Policy':   'unsafe-none',
       'Cross-Origin-Embedder-Policy': 'unsafe-none',
     },
     proxy: {

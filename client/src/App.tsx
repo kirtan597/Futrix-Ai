@@ -18,6 +18,7 @@ import SkillsGap    from './pages/SkillsGap';
 import CareerPath   from './pages/CareerPath';
 import History      from './pages/History';
 import Profile      from './pages/Profile';
+import ATSCheck     from './pages/ATSCheck';
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
 interface ErrorBoundaryState { hasError: boolean; error: Error | null }
@@ -41,11 +42,13 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     }
 }
 
-// ─── Route Guard ─────────────────────────────────────────────────────────────
+// ─── Route Guard (Preserves Intended Destination) ────────────────────────────
 function ProtectedRoute({ children }: { children: JSX.Element }) {
     const { isAuthenticated } = useAuth();
+    const location = useLocation();
+
     if (!isAuthenticated()) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
     return children;
 }
@@ -103,6 +106,7 @@ export default function App() {
                             <Route path="/result"      element={<ProtectedRoute><ResumeResult /></ProtectedRoute>} />
                             <Route path="/skills-gap"  element={<ProtectedRoute><SkillsGap /></ProtectedRoute>} />
                             <Route path="/career-path" element={<ProtectedRoute><CareerPath /></ProtectedRoute>} />
+                            <Route path="/ats-check"   element={<ProtectedRoute><ATSCheck /></ProtectedRoute>} />
                             <Route path="/history"     element={<ProtectedRoute><History /></ProtectedRoute>} />
                             <Route path="/profile"     element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                             <Route path="*"            element={<Navigate to="/login" replace />} />

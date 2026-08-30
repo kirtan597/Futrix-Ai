@@ -149,35 +149,36 @@ interface AuthUser {
 }
 
 export const loginUser = (email: string) =>
-    api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/login', { email });
+    api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/api/login', { email });
 
-export const googleLogin = (credential: string) =>
-    api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/auth/google', { credential });
+export const firebaseLogin = (idToken: string) =>
+    api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/api/auth/firebase', { idToken });
 
 export const refreshAccessToken = (refreshToken: string) =>
-    api.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken });
+    api.post<{ accessToken: string; refreshToken: string }>('/api/auth/refresh', { refreshToken });
 
 export const logoutUser = () =>
-    api.post('/auth/logout');
+    api.post('/api/auth/logout');
 
 export const verifyToken = () =>
-    api.get<{ valid: boolean; user: AuthUser }>('/auth/verify');
+    api.get<{ valid: boolean; user: AuthUser }>('/api/auth/verify');
 
 // ─── Resume ──────────────────────────────────────────────────────────────────
 export interface AnalyzePayload { text: string; email: string }
 export const analyzeResume = (payload: AnalyzePayload) =>
-    api.post('/upload-resume', payload);
+    api.post('/api/upload-resume', payload);
 
 // ─── History ─────────────────────────────────────────────────────────────────
 export const fetchHistory = (email: string) =>
-    api.get(`/history?email=${encodeURIComponent(email)}`);
+    api.get(`/api/history?email=${encodeURIComponent(email)}`);
 
 // ─── Compare two analyses ─────────────────────────────────────────────────────
 export const compareAnalyses = (id1: string, id2: string) =>
-    api.get(`/compare?id1=${id1}&id2=${id2}`);
+    api.get(`/api/compare?id1=${id1}&id2=${id2}`);
 
-// ─── Job matches ──────────────────────────────────────────────────────────────
-export const fetchJobMatches = (skills: string[]) =>
-    api.post('/jobs/match', { skills });
+// ─── ATS Check ───────────────────────────────────────────────────────────────
+export const atsCheck = (payload: { resume: string; target_role?: string; job_description?: string }) =>
+    api.post('/api/ats-check', payload);
 
 export default api;
+

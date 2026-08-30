@@ -20,6 +20,7 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
 import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -32,6 +33,7 @@ import CloseIcon from '@mui/icons-material/Close';
 const NAV_ITEMS = [
     { path: '/dashboard',   label: 'Dashboard',    icon: <DashboardOutlinedIcon sx={{ fontSize: 20 }} /> },
     { path: '/upload',      label: 'Resume Upload', icon: <ArticleOutlinedIcon sx={{ fontSize: 20 }} /> },
+    { path: '/ats-check',   label: 'ATS Checker',  icon: <FactCheckOutlinedIcon sx={{ fontSize: 20 }} /> },
     { path: '/result',      label: 'AI Analysis',  icon: <BarChartOutlinedIcon sx={{ fontSize: 20 }} /> },
     { path: '/skills-gap',  label: 'Skills Gap',   icon: <TrendingUpOutlinedIcon sx={{ fontSize: 20 }} /> },
     { path: '/career-path', label: 'Career Path',  icon: <TimelineOutlinedIcon sx={{ fontSize: 20 }} /> },

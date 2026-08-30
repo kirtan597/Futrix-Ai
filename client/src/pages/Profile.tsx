@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/useAuth';
+import apiService from '../services/apiService';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -11,7 +12,6 @@ import Chip from '@mui/material/Chip';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
-import EastIcon from '@mui/icons-material/East';
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -22,6 +22,15 @@ interface AnalysisData {
     gap_skills: string[];
     readiness_score: number;
     roadmap: string[];
+}
+
+interface UserProfile {
+    id: string;
+    email: string;
+    name?: string;
+    avatar?: string;
+    createdAt?: string;
+    lastLogin?: string;
 }
 
 function GlassCard({ children, sx = {} }: { children: React.ReactNode; sx?: object }) {
@@ -44,22 +53,54 @@ function RowItem({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 export default function Profile() {
     const [data, setData] = useState<AnalysisData | null>(null);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [historyCount, setHistoryCount] = useState<number>(0);
     const [mounted, setMounted] = useState(false);
     const navigate = useNavigate();
-    const email = localStorage.getItem('userEmail') || 'user@example.com';
-    const initials = email.slice(0, 2).toUpperCase();
+    const { email: authEmail, name: authName, avatar: authAvatar, refreshToken, clearAuth } = useAuth();
+    
+    const email = authEmail || localStorage.getItem('userEmail') || 'user@example.com';
+    const name = authName || profile?.name || email.split('@')[0];
+    const initials = (name || email).slice(0, 2).toUpperCase();
 
     useEffect(() => {
-        const stored = localStorage.getItem('analysisResult');
-        if (stored) { try { setData(JSON.parse(stored)); } catch { /* */ } }
-        setTimeout(() => setMounted(true), 80);
+        const loadProfile = async () => {
+            const stored = localStorage.getItem('analysisResult');
+            if (stored) { 
+                try { setData(JSON.parse(stored)); } catch { /* */ } 
+            }
+
+            try {
+                const userProf = await apiService.get<UserProfile>('/api/profile');
+                if (userProf) setProfile(userProf);
+            } catch {
+                // Profile API error fallback
+            }
+
+            try {
+                const hist = await apiService.get<any[]>('/api/history');
+                if (Array.isArray(hist)) setHistoryCount(hist.length);
+            } catch {
+                // History API error fallback
+            }
+
+            setMounted(true);
+        };
+
+        loadProfile();
     }, []);
 
-    const { clearAuth } = useAuth();
-
-    const handleLogout = () => {
-        clearAuth();
-        navigate('/login');
+    const handleLogout = async () => {
+        try {
+            if (refreshToken) {
+                await apiService.post('/api/auth/logout', { refreshToken });
+            }
+        } catch (err) {
+            console.error('[Profile] Logout API error:', err);
+        } finally {
+            clearAuth();
+            navigate('/login', { replace: true });
+        }
     };
 
     return (
@@ -74,7 +115,7 @@ export default function Profile() {
                     Profile
                 </Typography>
                 <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.88rem' }}>
-                    Manage your account and career settings
+                    Manage your account and authentication settings
                 </Typography>
             </Box>
 
@@ -83,34 +124,37 @@ export default function Profile() {
                 {/* Avatar card */}
                 <Box>
                     <GlassCard sx={{ p: 3.5, textAlign: 'center', mb: 2 }}>
-                        <Avatar sx={{
-                            width: 72, height: 72, mx: 'auto', mb: 2,
-                            fontSize: '1.6rem', fontWeight: 800,
-                            background: 'rgba(255,255,255,0.08)',
-                            border: '1px solid rgba(255,255,255,0.12)',
-                            color: '#fff',
-                        }}>
+                        <Avatar 
+                            src={authAvatar || profile?.avatar}
+                            sx={{
+                                width: 72, height: 72, mx: 'auto', mb: 2,
+                                fontSize: '1.6rem', fontWeight: 800,
+                                background: 'rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                color: '#fff',
+                            }}
+                        >
                             {initials}
                         </Avatar>
                         <Typography sx={{ fontWeight: 800, color: '#fff', fontSize: '1rem', letterSpacing: '-0.02em', mb: 0.4 }}>
-                            {email.split('@')[0]}
+                            {name}
                         </Typography>
                         <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)', mb: 2.5 }}>
                             {email}
                         </Typography>
-                        <Chip label="Free Plan" size="small" sx={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)', fontWeight: 600, fontSize: '0.72rem' }} />
+                        <Chip label="Standard Plan" size="small" sx={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)', fontWeight: 600, fontSize: '0.72rem' }} />
                     </GlassCard>
 
                     {/* Quick stats */}
                     {data && (
                         <GlassCard sx={{ p: 2.5 }}>
                             <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 1.5 }}>
-                                Your Stats
+                                Active Analysis
                             </Typography>
                             {[
-                                { icon: <BoltOutlinedIcon sx={{ fontSize: 15 }} />, label: 'Readiness', value: `${data.readiness_score}%` },
-                                { icon: <CheckCircleOutlineIcon sx={{ fontSize: 15 }} />, label: 'Skills Found', value: String(data.skills.length) },
-                                { icon: <TrendingUpOutlinedIcon sx={{ fontSize: 15 }} />, label: 'Gaps', value: String(data.gap_skills.length) },
+                                { icon: <BoltOutlinedIcon sx={{ fontSize: 15 }} />, label: 'Readiness', value: `${data.readiness_score || 0}%` },
+                                { icon: <CheckCircleOutlineIcon sx={{ fontSize: 15 }} />, label: 'Skills Found', value: String(data.skills?.length || 0) },
+                                { icon: <TrendingUpOutlinedIcon sx={{ fontSize: 15 }} />, label: 'Gaps', value: String(data.gap_skills?.length || 0) },
                             ].map(({ icon, label, value }) => (
                                 <Box key={label} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.3, borderBottom: '1px solid rgba(255,255,255,0.05)', '&:last-child': { borderBottom: 'none' } }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -135,39 +179,32 @@ export default function Profile() {
                         </Box>
                         <Divider sx={{ mb: 1 }} />
                         <RowItem icon={<EmailOutlinedIcon sx={{ fontSize: 15 }} />} label="Email" value={email} />
-                        <RowItem icon={<CalendarTodayOutlinedIcon sx={{ fontSize: 15 }} />} label="Member since" value="April 2026" />
-                        <RowItem icon={<BoltOutlinedIcon sx={{ fontSize: 15 }} />} label="Analyses run" value="3" />
+                        <RowItem icon={<CalendarTodayOutlinedIcon sx={{ fontSize: 15 }} />} label="Account Type" value="Google OAuth / Email" />
+                        <RowItem icon={<BoltOutlinedIcon sx={{ fontSize: 15 }} />} label="Analyses Recorded" value={String(historyCount || (data ? 1 : 0))} />
                     </GlassCard>
 
-                    {/* Upgrade CTA */}
+                    {/* Pro features overview */}
                     <GlassCard sx={{ p: 3.5, borderColor: 'rgba(255,255,255,0.1)' }}>
                         <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#fff', letterSpacing: '-0.025em', mb: 0.5 }}>
-                            Upgrade to Pro
+                            Career Twin Capabilities
                         </Typography>
                         <Typography sx={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.35)', mb: 2.5, lineHeight: 1.7 }}>
-                            Get unlimited analyses, PDF upload support, saved history, and advanced AI career coaching.
+                            All career twin features — NLP text analysis, deterministic scoring, gap detection, and personalized roadmaps — are active on your account.
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                            {['Unlimited analyses', 'PDF support', 'History', 'Advanced AI'].map(f => (
+                            {['NLP Analysis', 'Gap Detection', 'History Tracking', 'AI Career Roadmap'].map(f => (
                                 <Box key={f} sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
                                     <CheckCircleOutlineIcon sx={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }} />
                                     <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>{f}</Typography>
                                 </Box>
                             ))}
                         </Box>
-                        <Button
-                            variant="contained"
-                            endIcon={<EastIcon />}
-                            sx={{ mt: 2.5, borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }}
-                        >
-                            Upgrade Plan
-                        </Button>
                     </GlassCard>
 
-                    {/* Danger zone */}
+                    {/* Session Management */}
                     <GlassCard sx={{ p: 3.5 }}>
                         <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.55)', mb: 2 }}>
-                            Session
+                            Session Management
                         </Typography>
                         <Divider sx={{ mb: 2.5 }} />
                         <Button
@@ -179,6 +216,8 @@ export default function Profile() {
                                 color: 'rgba(248,113,113,0.65)',
                                 borderRadius: '10px',
                                 fontSize: '0.85rem',
+                                textTransform: 'none',
+                                fontWeight: 600,
                                 '&:hover': {
                                     borderColor: 'rgba(248,113,113,0.5)',
                                     background: 'rgba(248,113,113,0.06)',

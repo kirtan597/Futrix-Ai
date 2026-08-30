@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, ReferenceLine,
@@ -10,23 +13,23 @@ import {
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined';
 import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
 import TrendingDownOutlinedIcon from '@mui/icons-material/TrendingDownOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import apiService from '../services/apiService';
 import { useAuth } from '../store/useAuth';
 
 interface HistoryEntry {
     id: string | number;
+    rawId?: string;
     date: string;
     skills: string[];
     gap_skills: string[];
     readiness_score: number;
     roadmap_steps: number;
+    roadmap?: string[];
+    score_breakdown?: any;
+    career_paths?: any[];
 }
-
-const MOCK_HISTORY: HistoryEntry[] = [
-    { id: 1, date: '2026-04-10', skills: ['React','TypeScript','Node.js','Python','MongoDB','Docker','Git','REST API'], gap_skills: ['Kubernetes','AWS','GraphQL','Redis','Go'], readiness_score: 72, roadmap_steps: 5 },
-    { id: 2, date: '2026-03-22', skills: ['React','JavaScript','Node.js','Git','REST API'], gap_skills: ['TypeScript','Docker','MongoDB','Kubernetes','AWS','GraphQL','Redis'], readiness_score: 54, roadmap_steps: 7 },
-    { id: 3, date: '2026-02-14', skills: ['React','JavaScript','Git'], gap_skills: ['TypeScript','Node.js','MongoDB','Docker','Kubernetes','AWS','GraphQL','Redis','Go'], readiness_score: 38, roadmap_steps: 9 },
-];
 
 interface HistoryResponseItem {
     _id: string;
@@ -35,31 +38,34 @@ interface HistoryResponseItem {
     gap_skills?: string[];
     readiness_score?: number;
     roadmap?: string[];
+    score_breakdown?: any;
+    career_paths?: any[];
 }
 
-// Thin separator with zero background — replaces MUI Divider which bleeds white
 function Sep() {
     return <Box sx={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', my: 2, flexShrink: 0 }} />;
 }
 
-function GlassCard({ children, sx = {} }: { children: React.ReactNode; sx?: object }) {
+function GlassCard({ children, sx = {}, onClick }: { children: React.ReactNode; sx?: object; onClick?: () => void }) {
     return (
-        <Box sx={{
-            background: 'rgba(255,255,255,0.025)',
-            border: '1px solid rgba(255,255,255,0.065)',
-            borderRadius: '18px',
-            ...sx,
-        }}>
+        <Box 
+            onClick={onClick}
+            sx={{
+                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid rgba(255,255,255,0.065)',
+                borderRadius: '18px',
+                ...sx,
+            }}
+        >
             {children}
         </Box>
     );
 }
 
-// ─── Mini Score Ring ──────────────────────────────────────────────────────────
 function MiniRing({ score, size = 56 }: { score: number; size?: number }) {
     const sw = 5, r = (size / 2) - sw;
     const circ = 2 * Math.PI * r;
-    const offset = ((100 - score) / 100) * circ;
+    const offset = ((100 - Math.min(100, Math.max(0, score))) / 100) * circ;
     const color = score >= 70 ? '#e5e5e5' : score >= 50 ? '#a3a3a3' : '#525252';
     return (
         <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -79,53 +85,103 @@ function MiniRing({ score, size = 56 }: { score: number; size?: number }) {
 
 export default function History() {
     const [mounted, setMounted] = useState(false);
-    const [real, setReal] = useState<HistoryEntry | null>(null);
-    const [apiHistory, setApiHistory] = useState<HistoryEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [history, setHistory] = useState<HistoryEntry[]>([]);
     const { email } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
-        // Load latest from localStorage
-        const stored = localStorage.getItem('analysisResult');
-        if (stored) {
+        const fetchHistoryData = async () => {
             try {
-                const d = JSON.parse(stored);
-                setReal({
-                    id: 0,
-                    date: new Date().toISOString().split('T')[0],
-                    skills: d.skills,
-                    gap_skills: d.gap_skills,
-                    readiness_score: d.readiness_score,
-                    roadmap_steps: d.roadmap?.length ?? 0,
-                });
-            } catch { /* */ }
-        }
-        // Fetch real history from API
-        if (email) {
-            apiService.get<HistoryResponseItem[]>(`/api/history?email=${encodeURIComponent(email)}`)
-                .then((data) => {
-                    const mapped = data.map((h) => ({
+                const data = await apiService.get<HistoryResponseItem[]>('/api/history');
+                if (Array.isArray(data) && data.length > 0) {
+                    const mapped: HistoryEntry[] = data.map((h) => ({
                         id: h._id,
-                        date: h.createdAt?.split('T')[0] ?? new Date().toISOString().split('T')[0],
-                        skills: h.skills ?? [],
-                        gap_skills: h.gap_skills ?? [],
-                        readiness_score: h.readiness_score ?? 0,
-                        roadmap_steps: h.roadmap?.length ?? 0,
+                        rawId: h._id,
+                        date: h.createdAt ? h.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+                        skills: Array.isArray(h.skills) ? h.skills : [],
+                        gap_skills: Array.isArray(h.gap_skills) ? h.gap_skills : [],
+                        readiness_score: typeof h.readiness_score === 'number' ? h.readiness_score : 0,
+                        roadmap_steps: Array.isArray(h.roadmap) ? h.roadmap.length : 0,
+                        roadmap: h.roadmap,
+                        score_breakdown: h.score_breakdown,
+                        career_paths: h.career_paths,
                     }));
-                    setApiHistory(mapped);
-                })
-                .catch(() => { /* fall back to mock */ });
-        }
-        const t = setTimeout(() => setMounted(true), 80);
-        return () => clearTimeout(t);
+                    setHistory(mapped);
+                } else {
+                    // Check if there is an active analysis in localStorage
+                    const stored = localStorage.getItem('analysisResult');
+                    if (stored) {
+                        try {
+                            const d = JSON.parse(stored);
+                            setHistory([{
+                                id: 'current',
+                                date: new Date().toISOString().split('T')[0],
+                                skills: d.skills || [],
+                                gap_skills: d.gap_skills || [],
+                                readiness_score: d.readiness_score || 0,
+                                roadmap_steps: d.roadmap?.length || 0,
+                                roadmap: d.roadmap,
+                                score_breakdown: d.score_breakdown,
+                                career_paths: d.career_paths,
+                            }]);
+                        } catch {
+                            setHistory([]);
+                        }
+                    } else {
+                        setHistory([]);
+                    }
+                }
+            } catch (err) {
+                console.error('[History] Failed to fetch history:', err);
+                setHistory([]);
+            } finally {
+                setLoading(false);
+                setMounted(true);
+            }
+        };
+
+        fetchHistoryData();
     }, [email]);
 
-    // Prefer real API history; fall back to mock if empty
-    const history = apiHistory.length > 0
-        ? (real && !apiHistory.find(h => h.id === 0) ? [real, ...apiHistory] : apiHistory)
-        : (real ? [real, ...MOCK_HISTORY] : MOCK_HISTORY);
+    const handleSelectAnalysis = (entry: HistoryEntry) => {
+        const analysisData = {
+            _id: entry.rawId,
+            skills: entry.skills,
+            gap_skills: entry.gap_skills,
+            readiness_score: entry.readiness_score,
+            roadmap: entry.roadmap || [],
+            score_breakdown: entry.score_breakdown,
+            career_paths: entry.career_paths || [],
+        };
+        localStorage.setItem('analysisResult', JSON.stringify(analysisData));
+        navigate('/result');
+    };
+
+    if (loading) {
+        return (
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0a' }}>
+                <CircularProgress size={32} sx={{ color: 'rgba(255,255,255,0.4)' }} />
+            </Box>
+        );
+    }
+
+    if (history.length === 0) {
+        return (
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2, background: '#0a0a0a', p: 3, textAlign: 'center' }}>
+                <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>No Analysis History Found</Typography>
+                <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', maxWidth: 400 }}>
+                    You haven't run any resume analyses yet. Upload your first resume to start tracking progress.
+                </Typography>
+                <Button variant="contained" onClick={() => navigate('/upload')} sx={{ mt: 1, textTransform: 'none', fontWeight: 700, borderRadius: '8px' }}>
+                    Upload Resume
+                </Button>
+            </Box>
+        );
+    }
 
     const chartData = [...history].reverse().map((h, i) => ({
-        label: i === history.length - 1 && real ? 'Now' : h.date.slice(5),
+        label: i === history.length - 1 ? 'Latest' : h.date.slice(5),
         score: h.readiness_score,
     }));
 
@@ -138,16 +194,21 @@ export default function History() {
         <Box sx={{ minHeight: '100vh', background: '#0a0a0a', py: { xs: 3, md: 5 }, px: { xs: 2, sm: 3, md: 5 } }}>
 
             {/* ── Header ── */}
-            <Box sx={{ mb: 4, opacity: mounted ? 1 : 0, transition: 'opacity 0.5s' }}>
-                <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase', mb: 0.8 }}>
-                    Analysis History
-                </Typography>
-                <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em', mb: 0.8, fontSize: { xs: '1.6rem', md: '2.125rem' } }}>
-                    Past Analyses
-                </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.88rem' }}>
-                    Track your career readiness progress over time
-                </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 4, opacity: mounted ? 1 : 0, transition: 'opacity 0.5s', flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase', mb: 0.8 }}>
+                        Analysis History
+                    </Typography>
+                    <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em', mb: 0.8, fontSize: { xs: '1.6rem', md: '2.125rem' } }}>
+                        Past Analyses
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.88rem' }}>
+                        Click any past analysis to view its complete report
+                    </Typography>
+                </Box>
+                <Button variant="outlined" size="small" startIcon={<UploadFileOutlinedIcon />} onClick={() => navigate('/upload')} sx={{ borderRadius: '9px', fontSize: '0.8rem', textTransform: 'none' }}>
+                    New Analysis
+                </Button>
             </Box>
 
             {/* ── Stat strip ── */}
@@ -188,10 +249,9 @@ export default function History() {
                     />
                 </Box>
                 <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', mb: 3 }}>
-                    Score trajectory across all your analyses
+                    Score trajectory across all your saved analyses
                 </Typography>
 
-                {/* Isolated chart container — explicit overflow:hidden stops gradient bleed */}
                 <Box sx={{ height: 200, overflow: 'hidden', position: 'relative' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart
@@ -243,9 +303,8 @@ export default function History() {
                 </Box>
             </GlassCard>
 
-            {/* ── Timeline ── */}
+            {/* ── Timeline list ── */}
             <Box sx={{ position: 'relative', opacity: mounted ? 1 : 0, transition: 'opacity 0.5s 0.12s' }}>
-
                 {history.map((h, i) => {
                     const isLatest = i === 0;
                     const prev = history[i + 1];
@@ -257,24 +316,25 @@ export default function History() {
                             key={h.id}
                             sx={{ display: 'flex', gap: { xs: 1.5, md: 2.5 }, mb: 2, animation: 'fadeUp 0.4s ease both', animationDelay: `${i * 0.07}s` }}
                         >
-                            {/* Score ring node — desktop only */}
                             <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', alignItems: 'center', flexShrink: 0, pt: 1 }}>
                                 <MiniRing score={h.readiness_score} size={isLatest ? 58 : 50} />
                             </Box>
 
-                            {/* Card */}
-                            <GlassCard sx={{
-                                flex: 1,
-                                p: { xs: 2.5, md: 3 },
-                                borderColor: isLatest ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.055)',
-                                transition: 'all 0.25s',
-                                '&:hover': {
-                                    borderColor: 'rgba(255,255,255,0.14)',
-                                    boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
-                                    transform: 'translateY(-2px)',
-                                },
-                            }}>
-                                {/* Card header row */}
+                            <GlassCard 
+                                onClick={() => handleSelectAnalysis(h)}
+                                sx={{
+                                    flex: 1,
+                                    p: { xs: 2.5, md: 3 },
+                                    borderColor: isLatest ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.055)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.25s',
+                                    '&:hover': {
+                                        borderColor: 'rgba(255,255,255,0.25)',
+                                        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+                                        transform: 'translateY(-2px)',
+                                    },
+                                }}
+                            >
                                 <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
                                     <Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.4 }}>
@@ -290,11 +350,9 @@ export default function History() {
                                     </Box>
 
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                        {/* Score ring on mobile */}
                                         <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
                                             <MiniRing score={h.readiness_score} size={50} />
                                         </Box>
-                                        {/* Delta badge */}
                                         {delta !== null && (
                                             <Box sx={{ textAlign: 'right' }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, justifyContent: 'flex-end' }}>
@@ -309,29 +367,14 @@ export default function History() {
                                                 <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.22)' }}>vs prev</Typography>
                                             </Box>
                                         )}
+                                        <Button size="small" variant="text" endIcon={<VisibilityOutlinedIcon sx={{ fontSize: '14px !important' }} />} sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textTransform: 'none' }}>
+                                            View Report
+                                        </Button>
                                     </Box>
                                 </Box>
 
-                                {/* ── Thin separator — no MUI Divider ── */}
                                 <Sep />
 
-                                {/* Score bar */}
-                                <Box sx={{ mb: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.7 }}>
-                                        <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)' }}>Readiness Score</Typography>
-                                        <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.55)' }}>{h.readiness_score}/100</Typography>
-                                    </Box>
-                                    <Box sx={{ height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                                        <Box sx={{
-                                            height: '100%', borderRadius: 99,
-                                            width: `${h.readiness_score}%`,
-                                            background: h.readiness_score >= 70 ? 'rgba(255,255,255,0.65)' : h.readiness_score >= 50 ? 'rgba(163,163,163,0.65)' : 'rgba(82,82,82,0.65)',
-                                            transition: 'width 1s ease',
-                                        }} />
-                                    </Box>
-                                </Box>
-
-                                {/* Skills / Gaps / Roadmap */}
                                 <Box sx={{ display: 'flex', gap: { xs: 2, md: 4 }, flexWrap: 'wrap' }}>
                                     <Box>
                                         <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.22)', mb: 0.8, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>

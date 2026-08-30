@@ -1,6 +1,5 @@
 const express  = require("express");
 const axios    = require("axios");
-const { OAuth2Client } = require("google-auth-library");
 const router   = express.Router();
 
 const User     = require("../models/User");
@@ -8,14 +7,14 @@ const Analysis = require("../models/Analysis");
 const auth     = require("../middleware/auth");
 const rateLimiter = require("../middleware/rateLimiter");
 const { generateTokens, verifyRefreshToken } = require("../utils/authUtils");
+const { verifyFirebaseToken } = require("../utils/firebaseAdmin");
 
-const PYTHON_URL  = (process.env.PYTHON_URL  || "http://localhost:8000").replace(/\/$/, '');
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const PYTHON_URL           = (process.env.PYTHON_URL || "http://localhost:8000").replace(/\/$/, '');
+const INTERNAL_API_SECRET  = process.env.INTERNAL_API_SECRET;
 
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// GET /api/login - prevent 404 from browser prefetch
+// ─── GET /api/login (preflight guard) ────────────────────────────────────────
 router.get("/login", (req, res) => {
     res.status(405).json({ 
         error: "Method Not Allowed", 
@@ -23,17 +22,18 @@ router.get("/login", (req, res) => {
     });
 });
 
-router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
+// ─── POST /api/login (10 logins / 15 min) ─────────────────────────────────────
+router.post("/login", rateLimiter(10, 15 * 60 * 1000, "Too many login attempts. Please wait a few minutes before trying again."), async (req, res) => {
     const { email } = req.body;
-    console.log("[login] Email received:", email);
     
-    if (!email || !EMAIL_REGEX.test(email)) {
-        console.log("[login] Invalid email:", email);
-        return res.status(400).json({ error: "A valid email is required." });
+    if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
+        return res.status(400).json({ error: "A valid email address is required." });
     }
+
+    const sanitizedEmail = email.trim().toLowerCase();
+
     try {
-        let user = await User.findOne({ email });
-        console.log("[login] User found:", !!user);
+        let user = await User.findOne({ email: sanitizedEmail });
         
         // Check if account is locked
         if (user && user.isLocked) {
@@ -44,20 +44,17 @@ router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
         }
         
         if (!user) {
-            console.log("[login] Creating new user");
-            user = await User.create({ email });
-            console.log("[login] User created:", user._id);
+            user = await User.create({ email: sanitizedEmail });
         }
 
         // Generate tokens
         const { accessToken, refreshToken } = generateTokens(user);
-        console.log("[login] Tokens generated");
         
-        // Save refresh token to database
+        // Save refresh token & login timestamp to database
         user.refreshToken = refreshToken;
         user.lastLogin = new Date();
+        user.loginAttempts = 0;
         await user.save();
-        console.log("[login] User saved");
 
         res.json({ 
             status: "logged_in", 
@@ -66,86 +63,62 @@ router.post("/login", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
             user: {
                 id: user._id,
                 email: user.email,
-                name: user.name,
+                name: user.name || user.email.split('@')[0],
                 avatar: user.avatar
             }
         });
     } catch (err) {
-        console.error("[login] ERROR:", err.message, err.stack);
-        res.status(500).json({ error: "Server error during login.", detail: err.message });
+        console.error("[login] ERROR:", err.message);
+        res.status(500).json({ 
+            error: "Server error during login.", 
+            detail: process.env.NODE_ENV === 'production' ? "An internal server error occurred." : err.message 
+        });
     }
 });
 
-// ─── GET /api/auth/google (catch browser prefetch) ────────────────────────────
-// Some browsers or CDNs may send a GET request before the actual POST.
-// This prevents a 404 error and redirects them to POST.
-router.get("/auth/google", (req, res) => {
+// ─── GET /api/auth/firebase (preflight guard) ─────────────────────────────────
+router.get("/auth/firebase", (req, res) => {
     res.status(405).json({
         error: "Method Not Allowed",
-        message: "Use POST /api/auth/google with credential in body",
-        hint: "This endpoint requires POST method with { credential: '...' } in the request body"
+        message: "Use POST /api/auth/firebase with idToken in body"
     });
 });
 
-// ─── POST /api/auth/google ────────────────────────────────────────────────────
-router.post("/auth/google", rateLimiter(30, 60 * 60 * 1000), async (req, res) => {
-    const { credential } = req.body;
+// ─── POST /api/auth/firebase (Firebase ID Token Verification) ──────────────────
+router.post("/auth/firebase", rateLimiter(20, 15 * 60 * 1000, "Too many authentication attempts. Please wait a few minutes."), async (req, res) => {
+    const { idToken } = req.body;
     
-    console.log("[google-auth] 📝 New Google auth request received");
-    console.log("[google-auth] ✅ Backend GOOGLE_CLIENT_ID configured:", !!GOOGLE_CLIENT_ID);
-    
-    if (!credential) {
-        console.error("[google-auth] ❌ No credential in request body");
-        return res.status(400).json({ error: "Google credential is required." });
-    }
-    
-    if (!GOOGLE_CLIENT_ID) {
-        console.error("[google-auth] ❌ GOOGLE_CLIENT_ID environment variable not set");
-        return res.status(500).json({
-            error: "Google OAuth is not configured",
-            message: "GOOGLE_CLIENT_ID is missing on the backend.",
-            hint: "Set GOOGLE_CLIENT_ID in node-api/.env"
-        });
+    if (!idToken) {
+        return res.status(400).json({ error: "Firebase ID token is required." });
     }
     
     try {
-        console.log("[google-auth] 🔐 Verifying token with Google...");
-        const ticket = await googleClient.verifyIdToken({
-            idToken: credential,
-            audience: GOOGLE_CLIENT_ID,
-        });
-        console.log("[google-auth] ✅ Token verified successfully");
-        const payload = ticket.getPayload();
-        if (!payload || !payload.email || !payload.sub) {
+        const decoded = await verifyFirebaseToken(idToken);
+        
+        if (!decoded || !decoded.email) {
             return res.status(401).json({
-                error: "Invalid Google token",
-                message: "Google token payload is incomplete or invalid."
+                error: "Invalid Firebase Token",
+                message: "Firebase token payload is incomplete or missing email."
             });
         }
-        const { email, sub, name, picture, email_verified } = payload;
+        
+        const { email, uid, name, picture } = decoded;
+        const sanitizedEmail = email.trim().toLowerCase();
 
-        if (!email_verified) {
-            return res.status(403).json({ 
-                error: "Email not verified", 
-                message: "Please verify your email with Google first." 
-            });
-        }
-
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email: sanitizedEmail });
         if (!user) {
             user = await User.create({
-                email,
-                name: name || email.split('@')[0],
-                googleId: sub,
+                email: sanitizedEmail,
+                name: name || sanitizedEmail.split('@')[0],
+                firebaseUid: uid,
                 avatar: picture,
                 lastLogin: new Date()
             });
         } else {
-            if (!user.googleId) user.googleId = sub;
-            user.name  = name  || user.name;
+            user.firebaseUid = uid || user.firebaseUid;
+            user.name = name || user.name;
             user.avatar = picture || user.avatar;
             user.lastLogin = new Date();
-            // Reset login attempts on successful auth
             user.loginAttempts = 0;
             if (user.lockUntil) user.lockUntil = undefined;
             await user.save();
@@ -159,51 +132,23 @@ router.post("/auth/google", rateLimiter(30, 60 * 60 * 1000), async (req, res) =>
             status: "logged_in", 
             accessToken,
             refreshToken,
-            user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar }
+            user: { 
+                id: user._id, 
+                email: user.email, 
+                name: user.name, 
+                avatar: user.avatar 
+            }
         });
     } catch (err) {
-        const msg = err?.message || "Unknown Google auth error";
-        console.error("[google-auth]", msg);
-
-        if (msg.includes("Token used too late")) {
-            return res.status(401).json({ error: "Token expired", message: "Google token expired. Please try again." });
-        }
-
-        if (
-            msg.includes("Wrong recipient") ||
-            msg.includes("audience") ||
-            msg.includes("Invalid token") ||
-            msg.includes("malformed") ||
-            msg.includes("Wrong number of segments")
-        ) {
-            console.error("[google-auth] 🔐 Token validation failed:", {
-                reason: "Client ID or Audience mismatch",
-                backendClientId: GOOGLE_CLIENT_ID?.substring(0, 20) + "...",
-                error: msg
-            });
-            return res.status(401).json({
-                error: "Invalid Google token",
-                message: "Google token validation failed. Ensure frontend and backend use the same Google client ID. Check that your origin (http://localhost:5173) is whitelisted in Google Cloud Console.",
-                debug: {
-                    hint: "Go to Google Cloud Console → OAuth 2.0 Client ID → Add 'http://localhost:5173' to Authorized JavaScript Origins",
-                    backendConfigured: !!GOOGLE_CLIENT_ID
-                }
-            });
-        }
-
-        if (msg.includes("Expiration time too far in future") || msg.includes("used too early")) {
-            return res.status(401).json({
-                error: "System clock out of sync",
-                message: "Server time is out of sync with Google. Sync your OS date/time and try Google sign-in again."
-            });
-        }
-
-        res.status(500).json({ error: "Google authentication failed", message: msg });
+        console.error("[firebase-auth] ❌ Error:", err.message);
+        res.status(401).json({ 
+            error: "Firebase authentication failed", 
+            message: process.env.NODE_ENV === 'production' ? "Authentication failed. Please sign in again." : err.message 
+        });
     }
 });
 
-// ─── POST /api/auth/refresh ───────────────────────────────────────────────────
-// GET catch to prevent 404 from prefetch
+// ─── GET /api/auth/refresh (preflight guard) ──────────────────────────────────
 router.get("/auth/refresh", (req, res) => {
     res.status(405).json({
         error: "Method Not Allowed",
@@ -211,6 +156,7 @@ router.get("/auth/refresh", (req, res) => {
     });
 });
 
+// ─── POST /api/auth/refresh (Token Rotation) ──────────────────────────────────
 router.post("/auth/refresh", async (req, res) => {
     const { refreshToken } = req.body;
     
@@ -222,10 +168,10 @@ router.post("/auth/refresh", async (req, res) => {
     }
     
     try {
-        // Verify refresh token
+        // Verify refresh token signature and expiry
         const decoded = verifyRefreshToken(refreshToken);
         
-        // Find user and verify refresh token matches
+        // Find user by ID and verify matching token in database
         const user = await User.findById(decoded.id);
         
         if (!user) {
@@ -236,16 +182,17 @@ router.post("/auth/refresh", async (req, res) => {
         }
         
         if (user.refreshToken !== refreshToken) {
+            // Token was already rotated or invalidated
             return res.status(403).json({ 
                 error: "Invalid refresh token",
-                message: "Token does not match stored token"
+                message: "Token has been rotated or invalidated. Please log in again."
             });
         }
         
-        // Generate new tokens
+        // Generate new token pair (Token Rotation)
         const tokens = generateTokens(user);
         
-        // Update refresh token in database
+        // Invalidate old refresh token by saving new one
         user.refreshToken = tokens.refreshToken;
         await user.save();
         
@@ -257,13 +204,12 @@ router.post("/auth/refresh", async (req, res) => {
         console.error("[refresh-token]", err.message);
         res.status(403).json({ 
             error: "Invalid refresh token",
-            message: err.message
+            message: err.name === "TokenExpiredError" ? "Refresh token expired. Please log in again." : "Invalid refresh token"
         });
     }
 });
 
-// ─── POST /api/auth/logout ────────────────────────────────────────────────────
-// GET catch to prevent 404 from prefetch
+// ─── GET /api/auth/logout (preflight guard) ───────────────────────────────────
 router.get("/auth/logout", (req, res) => {
     res.status(405).json({
         error: "Method Not Allowed",
@@ -271,13 +217,30 @@ router.get("/auth/logout", (req, res) => {
     });
 });
 
-// No auth middleware — token may already be expired when user logs out
+// ─── POST /api/auth/logout (Server-side Invalidation) ──────────────────────────
 router.post("/auth/logout", async (req, res) => {
     try {
         const { refreshToken } = req.body;
+        const authHeader = req.header("Authorization");
+        
         if (refreshToken) {
             await User.findOneAndUpdate({ refreshToken }, { refreshToken: null });
         }
+        
+        // If Bearer token was provided, also clear by user ID
+        if (authHeader) {
+            const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+            try {
+                const { verifyAccessToken } = require("../utils/authUtils");
+                const verified = verifyAccessToken(token);
+                if (verified?.id) {
+                    await User.findByIdAndUpdate(verified.id, { refreshToken: null });
+                }
+            } catch {
+                // Token may already be expired upon logout — that's fine
+            }
+        }
+        
         res.json({ status: "logged_out" });
     } catch (err) {
         console.error("[logout]", err.message);
@@ -292,7 +255,7 @@ router.get("/auth/verify", auth, async (req, res) => {
         
         if (!user) {
             return res.status(404).json({ 
-                valid: false,
+                valid: false, 
                 error: "User not found" 
             });
         }
@@ -302,7 +265,7 @@ router.get("/auth/verify", auth, async (req, res) => {
             user: {
                 id: user._id,
                 email: user.email,
-                name: user.name,
+                name: user.name || user.email.split('@')[0],
                 avatar: user.avatar,
                 lastLogin: user.lastLogin
             }
@@ -310,120 +273,153 @@ router.get("/auth/verify", auth, async (req, res) => {
     } catch (err) {
         console.error("[verify-token]", err.message);
         res.status(500).json({ 
-            valid: false,
+            valid: false, 
             error: "Token verification failed" 
         });
     }
 });
 
+// ─── GET /api/profile ─────────────────────────────────────────────────────────
+router.get("/profile", auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('-refreshToken -loginAttempts -lockUntil');
+        if (!user) {
+            return res.status(404).json({ error: "User profile not found" });
+        }
+        res.json({
+            id: user._id,
+            email: user.email,
+            name: user.name || user.email.split('@')[0],
+            avatar: user.avatar,
+            createdAt: user.createdAt,
+            lastLogin: user.lastLogin
+        });
+    } catch (err) {
+        console.error("[profile-get]", err.message);
+        res.status(500).json({ error: "Failed to fetch profile" });
+    }
+});
+
+// ─── PUT /api/profile ─────────────────────────────────────────────────────────
+router.put("/profile", auth, async (req, res) => {
+    try {
+        const { name, avatar } = req.body;
+        const updates = {};
+        if (typeof name === 'string') updates.name = name.trim().slice(0, 100);
+        if (typeof avatar === 'string') updates.avatar = avatar.trim().slice(0, 500);
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { $set: updates },
+            { new: true }
+        ).select('-refreshToken -loginAttempts -lockUntil');
+
+        res.json({
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar
+        });
+    } catch (err) {
+        console.error("[profile-update]", err.message);
+        res.status(500).json({ error: "Failed to update profile" });
+    }
+});
+
 // ─── Helper: Retry logic for AI service ────────────────────────────────────────
-async function callAIServiceWithRetry(text, maxRetries = 5, initialDelay = 500) {
+async function callAIServiceWithRetry(text, maxRetries = 3, initialDelay = 800) {
     let lastError = null;
     const PYTHON_URL_ENDPOINT = `${PYTHON_URL}/analyze`;
     
-    console.log(`[AI-Service] 🔍 Endpoint configured: ${PYTHON_URL_ENDPOINT}`);
-    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            console.log(`[AI-Service] Attempt ${attempt}/${maxRetries} to ${PYTHON_URL_ENDPOINT}`);
+            const timeout = attempt === 1 ? 60_000 : 30_000;
+            const headers = {
+                'X-Request-Attempt': String(attempt),
+                'User-Agent': 'Futrix-Node-API/2.1',
+                'Content-Type': 'application/json'
+            };
             
-            // First attempt longer timeout (cold start), rest shorter
-            const timeout = attempt === 1 ? 120_000 : 60_000;
+            // Hop-by-hop internal authentication
+            if (INTERNAL_API_SECRET) {
+                headers['X-Internal-Secret'] = INTERNAL_API_SECRET;
+            }
             
             const aiRes = await axios.post(
                 PYTHON_URL_ENDPOINT,
                 { resume: text },
-                { 
-                    timeout,
-                    headers: {
-                        'X-Request-Attempt': String(attempt),
-                        'User-Agent': 'Futrix-Node-API/2.0',
-                        'Content-Type': 'application/json'
-                    }
-                }
+                { timeout, headers }
             );
             
-            console.log(`[AI-Service] ✅ Success on attempt ${attempt}`);
             return aiRes.data;
         } catch (err) {
             lastError = err;
             const errorType = err.code || err.response?.status || 'UNKNOWN';
-            const duration = err.config?.timeout || 0;
             
-            // Log detailed error info
-            console.error(`[AI-Service] ❌ Attempt ${attempt}/${maxRetries}:`, {
+            console.error(`[AI-Service] ❌ Attempt ${attempt}/${maxRetries} failed:`, {
                 type: errorType,
                 status: err.response?.status,
                 message: err.message,
-                timeout: duration,
-                endpoint: PYTHON_URL_ENDPOINT,
-                responseData: err.response?.data || null,
-                pythonUrlFromEnv: PYTHON_URL
+                endpoint: PYTHON_URL_ENDPOINT
             });
             
-            // Don't retry on client errors (4xx) except 503/504
+            // Don't retry on 4xx client errors
             if (err.response?.status && err.response.status < 500 && err.response.status !== 503 && err.response.status !== 504) {
-                console.error(`[AI-Service] Client error ${err.response.status} - not retrying`);
                 throw err;
             }
             
-            // Calculate exponential backoff for server errors
             if (attempt < maxRetries) {
                 const delay = initialDelay * Math.pow(2, attempt - 1);
-                console.log(`[AI-Service] Waiting ${delay}ms before retry...`);
                 await new Promise(r => setTimeout(r, delay));
             }
         }
     }
     
-    console.error(`[AI-Service] All ${maxRetries} retries exhausted. Last error:`, lastError?.message);
     throw lastError;
 }
 
-// ─── POST /api/upload-resume ──────────────────────────────────────────────────
-// GET catch to prevent 404 from prefetch
+// ─── GET /api/upload-resume (preflight guard) ─────────────────────────────────
 router.get("/upload-resume", (req, res) => {
     res.status(405).json({
         error: "Method Not Allowed",
-        message: "Use POST /api/upload-resume with text and email in body"
+        message: "Use POST /api/upload-resume with text in body"
     });
 });
 
-router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req, res) => {
-    const { text, email } = req.body;
-    console.log(`[upload-resume] 📤 POST request received. User: ${req.user?.email || 'unknown'}`);
+// ─── POST /api/upload-resume (5 uploads / hour) ───────────────────────────────
+router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000, "Resume upload limit reached: maximum 5 analyses per hour. Please try again later."), async (req, res) => {
+    const { text } = req.body;
     
-    if (!text || text.trim().length < 50) {
-        console.log(`[upload-resume] ❌ Text too short: ${text?.length || 0} chars`);
-        return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
+    if (!text || typeof text !== 'string' || text.trim().length < 50) {
+        return res.status(400).json({ 
+            error: "Resume text is too short. Please provide at least 50 characters." 
+        });
     }
+
+    if (text.length > 50000) {
+        return res.status(400).json({
+            error: "Resume text exceeds maximum length of 50,000 characters."
+        });
+    }
+
+    const sanitizedText = text.trim();
+    console.log(`[upload-resume] 📤 POST request from user: ${req.user.email}, text length: ${sanitizedText.length} chars`);
+
     try {
-        // Validate Python URL is configured
         if (!PYTHON_URL) {
-            console.error("[upload-resume] ❌ PYTHON_URL not configured");
-            return res.status(503).json({ error: "AI service is not properly configured. Please try again later." });
+            return res.status(503).json({ error: "AI service is not properly configured." });
         }
 
-        // Call Python AI engine with intelligent retry (no warm-up call)
-        console.log("[upload-resume] 📊 Calling AI analysis service...");
         let aiData;
         try {
-            aiData = await callAIServiceWithRetry(text, 3, 1000);
+            aiData = await callAIServiceWithRetry(sanitizedText, 3, 1000);
         } catch (aiErr) {
-            console.error("[upload-resume] ❌ AI service error after retries:", aiErr.message);
+            console.error("[upload-resume] ❌ AI service error:", aiErr.message);
             
-            // Provide specific error messages based on error type
             if (aiErr.code === "ECONNREFUSED") {
                 return res.status(503).json({ 
                     error: "AI engine offline",
-                    message: "Cannot connect to analysis service. Please try again in a few moments.",
-                    retryAfter: 10
-                });
-            }
-            if (aiErr.code === "ENOTFOUND" || aiErr.code === "ENETUNREACH") {
-                return res.status(503).json({ 
-                    error: "Network error",
-                    message: "Unable to reach the AI service. This is usually temporary.",
+                    message: "Cannot connect to analysis service. Please try again in a moment.",
                     retryAfter: 10
                 });
             }
@@ -434,40 +430,12 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
                     retryAfter: 5
                 });
             }
-            if (aiErr.response?.status === 503) {
-                return res.status(503).json({ 
-                    error: "Service overloaded",
-                    message: "The AI engine is currently processing too many requests. Please try again shortly.",
-                    retryAfter: 10
-                });
-            }
-            if (aiErr.response?.status === 504 || aiErr.response?.status === 502) {
-                return res.status(503).json({ 
-                    error: "Gateway timeout",
-                    message: "The request took too long to process. Please try again.",
-                    retryAfter: 5
-                });
-            }
             if (aiErr.response?.status === 400) {
                 return res.status(400).json({ 
                     error: aiErr.response?.data?.detail || "Invalid resume format",
-                    message: "The resume text could not be analyzed. Please check your input."
+                    message: "The resume text could not be analyzed."
                 });
             }
-            if (aiErr.response?.data?.detail) {
-                return res.status(aiErr.response.status || 500).json({ 
-                    error: "Analysis failed",
-                    message: aiErr.response.data.detail 
-                });
-            }
-            
-            // Generic service error
-            console.error("[upload-resume] Unexpected AI error:", {
-                status: aiErr.response?.status,
-                message: aiErr.message,
-                code: aiErr.code,
-                data: aiErr.response?.data
-            });
             
             return res.status(503).json({ 
                 error: "Analysis service unavailable",
@@ -476,60 +444,53 @@ router.post("/upload-resume", auth, rateLimiter(50, 60 * 60 * 1000), async (req,
             });
         }
 
-        // Validate AI response
         if (!aiData || typeof aiData !== 'object') {
-            console.error("[upload-resume] ❌ Invalid AI response format");
             return res.status(500).json({ 
                 error: "Invalid response from AI service",
-                message: "The AI service returned an unexpected response format. Please try again."
+                message: "Unexpected response format."
             });
         }
 
-        // Persist to MongoDB with error handling
+        // Persist to MongoDB associated strictly with authenticated user's email
         let saved;
         try {
             saved = await Analysis.create({
-                email:           email || req.user?.email,
-                resumeText:      text,
-                skills:          aiData.skills          || [],
-                gap_skills:      aiData.gap_skills       || [],
-                readiness_score: aiData.readiness_score  || 0,
-                roadmap:         aiData.roadmap          || [],
-                score_breakdown: aiData.score_breakdown  || null,
-                career_paths:    aiData.career_paths     || [],
+                email:                 req.user.email,
+                resumeText:            sanitizedText,
+                skills:                aiData.skills                || [],
+                gap_skills:            aiData.gap_skills             || [],
+                readiness_score:       aiData.readiness_score        || 0,
+                roadmap:               aiData.roadmap                || [],
+                score_breakdown:       aiData.score_breakdown        || null,
+                career_paths:          aiData.career_paths           || [],
+                skill_weights:         aiData.skill_weights          || [],
+                category_distribution: aiData.category_distribution || [],
+                readiness_trajectory:  aiData.readiness_trajectory   || null,
             });
-            console.log("[upload-resume] ✅ Analysis saved successfully");
         } catch (dbErr) {
             console.error("[upload-resume] ❌ Database error:", dbErr.message);
-            
-            if (dbErr.name === "ValidationError") {
-                return res.status(400).json({ error: "Invalid data format", detail: dbErr.message });
-            }
-            if (dbErr.name === "MongoNetworkError" || dbErr.message?.includes("ECONNREFUSED")) {
-                return res.status(503).json({ error: "Database is temporarily unavailable. Please try again." });
-            }
-            
-            return res.status(500).json({ error: "Failed to save analysis. Please try again.", detail: dbErr.message });
+            return res.status(500).json({ error: "Failed to save analysis results." });
         }
 
         res.json({ ...aiData, _id: saved._id });
     } catch (err) {
-        console.error("[upload-resume] Unexpected error:", err.message, err.stack);
-        res.status(500).json({ error: "Analysis failed. Please try again.", detail: err.message });
+        console.error("[upload-resume] Unexpected error:", err.message);
+        res.status(500).json({ error: "Analysis failed. Please try again." });
     }
 });
 
-// ─── GET /api/history ─────────────────────────────────────────────────────────
-// Returns the last 20 analyses for a user, sorted newest first.
+// ─── GET /api/history (Scoped to Authenticated User) ──────────────────────────
 router.get("/history", auth, async (req, res) => {
-    const email = req.query.email || req.user?.email;
-    if (!email) return res.status(400).json({ error: "Email required." });
+    // Strictly enforce scoping to authenticated user (IDOR prevention)
+    const email = req.user.email;
+    
     try {
         const analyses = await Analysis
             .find({ email })
             .sort({ createdAt: -1 })
             .limit(20)
-            .select("-resumeText"); // don't send full text back
+            .select("-resumeText");
+            
         res.json(analyses);
     } catch (err) {
         console.error("[history]", err.message);
@@ -537,22 +498,33 @@ router.get("/history", auth, async (req, res) => {
     }
 });
 
-// ─── GET /api/compare ─────────────────────────────────────────────────────────
-// Compare two analyses by ID and return delta.
+// ─── GET /api/compare (IDOR Protected) ────────────────────────────────────────
 router.get("/compare", auth, async (req, res) => {
     const { id1, id2 } = req.query;
-    if (!id1 || !id2) return res.status(400).json({ error: "id1 and id2 are required." });
+    if (!id1 || !id2) return res.status(400).json({ error: "id1 and id2 parameters are required." });
+    
     try {
         const [a, b] = await Promise.all([
             Analysis.findById(id1).select("-resumeText"),
             Analysis.findById(id2).select("-resumeText"),
         ]);
-        if (!a || !b) return res.status(404).json({ error: "One or both analyses not found." });
+        
+        if (!a || !b) {
+            return res.status(404).json({ error: "One or both analyses not found." });
+        }
 
-        const newSkills     = b.skills.filter(s => !a.skills.includes(s));
-        const resolvedGaps  = a.gap_skills.filter(g => !b.gap_skills.includes(g));
-        const remainingGaps = b.gap_skills;
-        const scoreDelta    = b.readiness_score - a.readiness_score;
+        // IDOR Check: Ensure both analyses belong to the requesting user
+        if (a.email !== req.user.email || b.email !== req.user.email) {
+            return res.status(403).json({ 
+                error: "Access Denied",
+                message: "You can only compare your own analyses." 
+            });
+        }
+
+        const newSkills     = (b.skills || []).filter(s => !(a.skills || []).includes(s));
+        const resolvedGaps  = (a.gap_skills || []).filter(g => !(b.gap_skills || []).includes(g));
+        const remainingGaps = b.gap_skills || [];
+        const scoreDelta    = (b.readiness_score || 0) - (a.readiness_score || 0);
 
         res.json({
             analysis_a: a,
@@ -571,15 +543,6 @@ router.get("/compare", auth, async (req, res) => {
 });
 
 // ─── POST /api/jobs/match ─────────────────────────────────────────────────────
-// GET catch to prevent 404 from prefetch
-router.get("/jobs/match", (req, res) => {
-    res.status(405).json({
-        error: "Method Not Allowed",
-        message: "Use POST /api/jobs/match with skills array in body"
-    });
-});
-
-// Returns matching job titles + salary data based on skills.
 const JOB_DB = [
     { title: "Frontend Engineer",     requiredSkills: ["React", "TypeScript", "JavaScript", "CSS"],          salary: "$85k–$130k", demand: "High"      },
     { title: "Full Stack Developer",  requiredSkills: ["React", "Node.js", "MongoDB", "REST API", "Docker"], salary: "$90k–$145k", demand: "Very High"  },
@@ -590,12 +553,19 @@ const JOB_DB = [
     { title: "Cloud Architect",       requiredSkills: ["AWS", "Kubernetes", "Terraform", "Docker"],           salary: "$130k–$200k", demand: "High"     },
 ];
 
+router.get("/jobs/match", (req, res) => {
+    res.status(405).json({
+        error: "Method Not Allowed",
+        message: "Use POST /api/jobs/match with skills array in body"
+    });
+});
+
 router.post("/jobs/match", auth, async (req, res) => {
     const { skills = [] } = req.body;
     if (!Array.isArray(skills) || skills.length === 0) {
         return res.status(400).json({ error: "skills array is required." });
     }
-    const skillsLower = skills.map(s => s.toLowerCase());
+    const skillsLower = skills.map(s => String(s).toLowerCase());
     const matches = JOB_DB.map(job => {
         const matched  = job.requiredSkills.filter(r => skillsLower.includes(r.toLowerCase()));
         const missing  = job.requiredSkills.filter(r => !skillsLower.includes(r.toLowerCase()));
@@ -606,4 +576,37 @@ router.post("/jobs/match", auth, async (req, res) => {
     res.json(matches);
 });
 
+// ─── POST /api/ats-check (ATS Heuristic Verification) ─────────────────────────
+router.post("/ats-check", auth, async (req, res) => {
+    const { resume, target_role } = req.body;
+    if (!resume || typeof resume !== 'string' || resume.trim().length < 50) {
+        return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
+    }
+
+    try {
+        const headers = {
+            'User-Agent': 'Futrix-Node-API/2.1',
+            'Content-Type': 'application/json',
+        };
+        if (INTERNAL_API_SECRET) {
+            headers['X-Internal-Secret'] = INTERNAL_API_SECRET;
+        }
+
+        const aiRes = await axios.post(
+            `${PYTHON_URL}/ats-check`,
+            { resume: resume.trim(), target_role },
+            { timeout: 30000, headers }
+        );
+
+        res.json(aiRes.data);
+    } catch (err) {
+        console.error("[ats-check] ❌ Error:", err.message);
+        res.status(503).json({
+            error: "ATS Service Unavailable",
+            message: "Could not complete ATS check at this time. Please try again shortly."
+        });
+    }
+});
+
 module.exports = router;
+

@@ -12,8 +12,6 @@ import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import Paper from '@mui/material/Paper';
 import Collapse from '@mui/material/Collapse';
-import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import HomeIcon from '@mui/icons-material/Home';
@@ -36,7 +34,7 @@ export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
   onRefresh,
 }) => {
   const [showDetails, setShowDetails] = React.useState(false);
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = import.meta.env.DEV;
 
   return (
     <Box

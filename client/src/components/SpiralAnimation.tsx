@@ -125,12 +125,10 @@ class AnimationController {
         // Use cached camera Z to reduce recalculation
         if (position.z > this.cachedNewCameraZ) {
             const dotDepthFromCamera = position.z - this.cachedNewCameraZ;
-            const x = this.viewZoom * position.x / dotDepthFromCamera;
-            const y = this.viewZoom * position.y / dotDepthFromCamera;
-            const sw = 400 * sizeFactor / dotDepthFromCamera;
-            // Use fillRect instead of arc() + fill() for better performance
-            const radius = 0.5;
-            this.ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+            const x = (this.viewZoom * position.x) / dotDepthFromCamera;
+            const y = (this.viewZoom * position.y) / dotDepthFromCamera;
+            const sw = Math.max(0.5, (400 * sizeFactor) / dotDepthFromCamera);
+            this.ctx.fillRect(x - sw, y - sw, sw * 2, sw * 2);
         }
     }
 
