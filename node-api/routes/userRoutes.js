@@ -2,11 +2,13 @@ const express  = require("express");
 const axios    = require("axios");
 const router   = express.Router();
 
-const User     = require("../models/User");
-const Analysis = require("../models/Analysis");
-const auth     = require("../middleware/auth");
-const rateLimiter = require("../middleware/rateLimiter");
-const { generateTokens, verifyRefreshToken } = require("../utils/authUtils");
+const userRepo         = require("../db/userRepo");
+const analysisRepo     = require("../db/analysisRepo");
+const refreshTokenRepo = require("../db/refreshTokenRepo");
+
+const auth         = require("../middleware/auth");
+const rateLimiter  = require("../middleware/rateLimiter");
+const { generateTokens, verifyRefreshToken, verifyAccessToken } = require("../utils/authUtils");
 const { verifyFirebaseToken } = require("../utils/firebaseAdmin");
 
 const PYTHON_URL           = (process.env.PYTHON_URL || "http://localhost:8000").replace(/\/$/, '');
@@ -33,7 +35,7 @@ router.post("/login", rateLimiter(10, 15 * 60 * 1000, "Too many login attempts. 
     const sanitizedEmail = email.trim().toLowerCase();
 
     try {
-        let user = await User.findOne({ email: sanitizedEmail });
+        let user = await userRepo.findByEmail(sanitizedEmail);
         
         // Check if account is locked
         if (user && user.isLocked) {
@@ -44,24 +46,23 @@ router.post("/login", rateLimiter(10, 15 * 60 * 1000, "Too many login attempts. 
         }
         
         if (!user) {
-            user = await User.create({ email: sanitizedEmail });
+            user = await userRepo.createUser({ email: sanitizedEmail });
         }
 
         // Generate tokens
         const { accessToken, refreshToken } = generateTokens(user);
         
         // Save refresh token & login timestamp to database
-        user.refreshToken = refreshToken;
-        user.lastLogin = new Date();
-        user.loginAttempts = 0;
-        await user.save();
+        await refreshTokenRepo.storeRefreshToken(user.id, refreshToken);
+        await userRepo.resetLoginAttempts(user.id);
 
         res.json({ 
             status: "logged_in", 
             accessToken,
             refreshToken,
             user: {
-                id: user._id,
+                id: user.id,
+                _id: user.id,
                 email: user.email,
                 name: user.name || user.email.split('@')[0],
                 avatar: user.avatar
@@ -105,35 +106,35 @@ router.post("/auth/firebase", rateLimiter(20, 15 * 60 * 1000, "Too many authenti
         const { email, uid, name, picture } = decoded;
         const sanitizedEmail = email.trim().toLowerCase();
 
-        let user = await User.findOne({ email: sanitizedEmail });
+        let user = await userRepo.findByEmail(sanitizedEmail);
         if (!user) {
-            user = await User.create({
+            user = await userRepo.createUser({
                 email: sanitizedEmail,
                 name: name || sanitizedEmail.split('@')[0],
                 firebaseUid: uid,
                 avatar: picture,
-                lastLogin: new Date()
             });
         } else {
-            user.firebaseUid = uid || user.firebaseUid;
-            user.name = name || user.name;
-            user.avatar = picture || user.avatar;
-            user.lastLogin = new Date();
-            user.loginAttempts = 0;
-            if (user.lockUntil) user.lockUntil = undefined;
-            await user.save();
+            user = await userRepo.updateUser(user.id, {
+                firebaseUid: uid || user.firebaseUid,
+                name: name || user.name,
+                avatar: picture || user.avatar,
+                lastLogin: new Date(),
+                loginAttempts: 0,
+                lockUntil: null,
+            });
         }
 
         const { accessToken, refreshToken } = generateTokens(user);
-        user.refreshToken = refreshToken;
-        await user.save();
+        await refreshTokenRepo.storeRefreshToken(user.id, refreshToken);
 
         res.json({ 
             status: "logged_in", 
             accessToken,
             refreshToken,
             user: { 
-                id: user._id, 
+                id: user.id,
+                _id: user.id,
                 email: user.email, 
                 name: user.name, 
                 avatar: user.avatar 
@@ -171,8 +172,8 @@ router.post("/auth/refresh", async (req, res) => {
         // Verify refresh token signature and expiry
         const decoded = verifyRefreshToken(refreshToken);
         
-        // Find user by ID and verify matching token in database
-        const user = await User.findById(decoded.id);
+        // Find user by ID
+        const user = await userRepo.findById(decoded.id);
         
         if (!user) {
             return res.status(404).json({ 
@@ -181,8 +182,9 @@ router.post("/auth/refresh", async (req, res) => {
             });
         }
         
-        if (user.refreshToken !== refreshToken) {
-            // Token was already rotated or invalidated
+        // Check if token exists in Postgres and is not revoked
+        const validToken = await refreshTokenRepo.findValidToken(refreshToken);
+        if (!validToken) {
             return res.status(403).json({ 
                 error: "Invalid refresh token",
                 message: "Token has been rotated or invalidated. Please log in again."
@@ -192,9 +194,9 @@ router.post("/auth/refresh", async (req, res) => {
         // Generate new token pair (Token Rotation)
         const tokens = generateTokens(user);
         
-        // Invalidate old refresh token by saving new one
-        user.refreshToken = tokens.refreshToken;
-        await user.save();
+        // Invalidate old refresh token and store new one
+        await refreshTokenRepo.revokeToken(refreshToken);
+        await refreshTokenRepo.storeRefreshToken(user.id, tokens.refreshToken);
         
         res.json({
             accessToken: tokens.accessToken,
@@ -224,17 +226,16 @@ router.post("/auth/logout", async (req, res) => {
         const authHeader = req.header("Authorization");
         
         if (refreshToken) {
-            await User.findOneAndUpdate({ refreshToken }, { refreshToken: null });
+            await refreshTokenRepo.revokeToken(refreshToken);
         }
         
-        // If Bearer token was provided, also clear by user ID
+        // If Bearer token was provided, also revoke user tokens
         if (authHeader) {
             const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
             try {
-                const { verifyAccessToken } = require("../utils/authUtils");
                 const verified = verifyAccessToken(token);
                 if (verified?.id) {
-                    await User.findByIdAndUpdate(verified.id, { refreshToken: null });
+                    await refreshTokenRepo.revokeAllUserTokens(verified.id);
                 }
             } catch {
                 // Token may already be expired upon logout — that's fine
@@ -251,7 +252,7 @@ router.post("/auth/logout", async (req, res) => {
 // ─── GET /api/auth/verify ─────────────────────────────────────────────────────
 router.get("/auth/verify", auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-refreshToken -loginAttempts -lockUntil');
+        const user = await userRepo.findById(req.user.id);
         
         if (!user) {
             return res.status(404).json({ 
@@ -263,7 +264,8 @@ router.get("/auth/verify", auth, async (req, res) => {
         res.json({
             valid: true,
             user: {
-                id: user._id,
+                id: user.id,
+                _id: user.id,
                 email: user.email,
                 name: user.name || user.email.split('@')[0],
                 avatar: user.avatar,
@@ -282,12 +284,13 @@ router.get("/auth/verify", auth, async (req, res) => {
 // ─── GET /api/profile ─────────────────────────────────────────────────────────
 router.get("/profile", auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-refreshToken -loginAttempts -lockUntil');
+        const user = await userRepo.findById(req.user.id);
         if (!user) {
             return res.status(404).json({ error: "User profile not found" });
         }
         res.json({
-            id: user._id,
+            id: user.id,
+            _id: user.id,
             email: user.email,
             name: user.name || user.email.split('@')[0],
             avatar: user.avatar,
@@ -308,14 +311,11 @@ router.put("/profile", auth, async (req, res) => {
         if (typeof name === 'string') updates.name = name.trim().slice(0, 100);
         if (typeof avatar === 'string') updates.avatar = avatar.trim().slice(0, 500);
 
-        const user = await User.findByIdAndUpdate(
-            req.user.id,
-            { $set: updates },
-            { new: true }
-        ).select('-refreshToken -loginAttempts -lockUntil');
+        const user = await userRepo.updateUser(req.user.id, updates);
 
         res.json({
-            id: user._id,
+            id: user.id,
+            _id: user.id,
             email: user.email,
             name: user.name,
             avatar: user.avatar
@@ -451,10 +451,11 @@ router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000, "Resume uploa
             });
         }
 
-        // Persist to MongoDB associated strictly with authenticated user's email
+        // Persist to Supabase associated strictly with authenticated user
         let saved;
         try {
-            saved = await Analysis.create({
+            saved = await analysisRepo.createAnalysis({
+                user_id:               req.user.id,
                 email:                 req.user.email,
                 resumeText:            sanitizedText,
                 skills:                aiData.skills                || [],
@@ -472,7 +473,7 @@ router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000, "Resume uploa
             return res.status(500).json({ error: "Failed to save analysis results." });
         }
 
-        res.json({ ...aiData, _id: saved._id });
+        res.json({ ...aiData, _id: saved.id, id: saved.id });
     } catch (err) {
         console.error("[upload-resume] Unexpected error:", err.message);
         res.status(500).json({ error: "Analysis failed. Please try again." });
@@ -481,16 +482,10 @@ router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000, "Resume uploa
 
 // ─── GET /api/history (Scoped to Authenticated User) ──────────────────────────
 router.get("/history", auth, async (req, res) => {
-    // Strictly enforce scoping to authenticated user (IDOR prevention)
     const email = req.user.email;
     
     try {
-        const analyses = await Analysis
-            .find({ email })
-            .sort({ createdAt: -1 })
-            .limit(20)
-            .select("-resumeText");
-            
+        const analyses = await analysisRepo.findHistoryByEmail(email, 20);
         res.json(analyses);
     } catch (err) {
         console.error("[history]", err.message);
@@ -505,8 +500,8 @@ router.get("/compare", auth, async (req, res) => {
     
     try {
         const [a, b] = await Promise.all([
-            Analysis.findById(id1).select("-resumeText"),
-            Analysis.findById(id2).select("-resumeText"),
+            analysisRepo.findById(id1),
+            analysisRepo.findById(id2),
         ]);
         
         if (!a || !b) {
@@ -516,7 +511,7 @@ router.get("/compare", auth, async (req, res) => {
         // IDOR Check: Ensure both analyses belong to the requesting user
         if (a.email !== req.user.email || b.email !== req.user.email) {
             return res.status(403).json({ 
-                error: "Access Denied",
+                error: "Access Denied", 
                 message: "You can only compare your own analyses." 
             });
         }
@@ -609,4 +604,3 @@ router.post("/ats-check", auth, async (req, res) => {
 });
 
 module.exports = router;
-

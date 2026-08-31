@@ -6,7 +6,7 @@
 ![FastAPI Engine](https://img.shields.io/badge/AI%20Engine-FastAPI%20·%20Python-009688?style=for-the-badge&logo=fastapi)
 ![Node API](https://img.shields.io/badge/Orchestrator-Express%20·%20Node.js-339933?style=for-the-badge&logo=nodedotjs)
 ![React Client](https://img.shields.io/badge/Frontend-React%2018%20·%20Vite%20·%20MUI-61DAFB?style=for-the-badge&logo=react)
-![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248?style=for-the-badge&logo=mongodb)
+![Database](https://img.shields.io/badge/Database-PostgreSQL%20·%20Supabase-3ECF8E?style=for-the-badge&logo=supabase)
 ![Status](https://img.shields.io/badge/Deployment-Production%20Ready-brightgreen?style=for-the-badge)
 
 <p align="center">
@@ -22,7 +22,7 @@
 2. [Key Features](#-key-features)
 3. [Interactive Data Visualizations](#-interactive-data-visualizations)
 4. [End-to-End User Flow](#-end-to-end-user-flow)
-5. [Service Breakdown](#-service-breakdown)
+5. [Database Schema & Migration](#-database-schema--migration)
 6. [Security & Authentication](#-security--authentication)
 7. [API Reference](#-api-reference)
 8. [Local Development Setup](#-local-development-setup)
@@ -47,7 +47,7 @@ flowchart TD
         FirebaseSDK["Firebase Admin SDK Authentication"]
         AuthMiddleware["JWT Verification & Rate Limiter"]
         UserRouter["Auth, Resume, History, ATS, Compare, Job Match Routes"]
-        MongoDB[("MongoDB Atlas")]
+        Postgres[("PostgreSQL / Supabase")]
     end
 
     subgraph Engine ["AI Inference Layer (Render / Python FastAPI)"]
@@ -64,7 +64,7 @@ flowchart TD
     NodeServer --> FirebaseSDK
     NodeServer --> AuthMiddleware
     AuthMiddleware --> UserRouter
-    UserRouter -- "Mongoose ODM" --> MongoDB
+    UserRouter -- "@supabase/supabase-js" --> Postgres
     UserRouter -- "Internal HTTP / X-Internal-Secret" --> FastAPIServer
     FastAPIServer --> InternalAuth
     InternalAuth --> NLP
@@ -108,7 +108,7 @@ sequenceDiagram
     participant SPA as React Frontend
     participant API as Node.js API
     participant AI as Python AI Engine
-    participant DB as MongoDB Atlas
+    participant DB as PostgreSQL (Supabase)
 
     %% Auth Flow
     User->>SPA: Sign in with Google Popup or Email (Firebase)
@@ -124,9 +124,23 @@ sequenceDiagram
     SPA->>API: POST /api/upload-resume (Auth: Bearer JWT)
     API->>AI: POST /analyze (Header: X-Internal-Secret)
     AI-->>API: Return { skills, gap_skills, readiness_score, roadmap, career_paths }
-    API->>DB: Save persistent analysis document
+    API->>DB: Save persistent analysis row in PostgreSQL
     API-->>SPA: Return complete analysis report
     SPA->>SPA: Populate Dashboard, Skills Gap, and Career Path visualizations
+```
+
+---
+
+## 🗄️ Database Schema & Migration
+
+Futrix AI uses PostgreSQL on **Supabase** with a relational schema and JSONB support for nested report analytics:
+- **`users`**: Account identity, OAuth provider UIDs, login attempts, and account lockout tracking.
+- **`refresh_tokens`**: Long-lived JWT tokens for secure rotation and single-session revocation.
+- **`analyses`**: Full resume report documents, skills, gap arrays, trajectory matrices, and scores.
+
+For migration from MongoDB Atlas to Supabase, refer to the [Migration Guide (MIGRATION.md)](file:///d:/Projects/Futrix-Ai/Futrix-Ai/MIGRATION.md) and execute:
+```bash
+node node-api/scripts/migrate-to-supabase.js --dry-run
 ```
 
 ---
@@ -162,7 +176,7 @@ sequenceDiagram
 ### Prerequisites
 - Node.js 18+
 - Python 3.10+
-- MongoDB instance (Local or Atlas)
+- Supabase Project or local in-memory fallback
 
 ### 1. Python AI Engine
 ```bash
@@ -208,13 +222,14 @@ The client will be running on `http://localhost:5173`.
 ### 2. Deploy Node.js API to Render
 - **Root Directory**: `node-api`
 - **Build Command**: `npm install`
-- **Start Command**: `npm start`
+- **Start Command**: `node server.js`
 - **Environment Variables**:
   - `NODE_ENV=production`
-  - `MONGO_URI=your_mongodb_atlas_connection_string`
+  - `SUPABASE_URL=https://your-project.supabase.co`
+  - `SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key`
   - `JWT_SECRET=your_jwt_secret`
   - `JWT_REFRESH_SECRET=your_jwt_refresh_secret`
-  - `PYTHON_AI_URL=https://futrix-python-ai.onrender.com`
+  - `PYTHON_URL=https://futrix-python-ai.onrender.com`
   - `INTERNAL_API_SECRET=your_secure_secret`
   - `CLIENT_URL=https://futrixai.netlify.app`
   - `FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}`

@@ -12,16 +12,16 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: MONGO_URI
+      - key: SUPABASE_URL
+        sync: false          # Set in Render dashboard (e.g. https://your-project.supabase.co)
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false          # Set in Render dashboard
       - key: JWT_SECRET
         generateValue: true  # Render auto-generates a secure value
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      - key: GOOGLE_CLIENT_ID
-        sync: false          # Set in Render dashboard
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
+      - key: INTERNAL_API_SECRET
+        generateValue: true
       - key: PYTHON_URL
         fromService:
           name: futrix-python-ai
@@ -41,3 +41,5 @@ services:
     envVars:
       - key: PORT
         value: 10000
+      - key: PYTHON_VERSION
+        value: 3.11.0

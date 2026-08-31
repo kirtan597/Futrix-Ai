@@ -1,9 +1,9 @@
 require("dotenv").config(); // Must be first before any process.env usage
 
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const { startWarmer } = require("./utils/serviceWarmer");
+const { checkDbConnection } = require("./db/supabaseClient");
 
 const app = express();
 
@@ -45,43 +45,33 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors(corsOptions));
 
-// ─── Connect to MongoDB ────────────────────────────────────────────────────────
-const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/futrixai";
-let isDbConnected = false;
-
-async function connectDB() {
-    let retries = 5;
-    while (retries) {
-        try {
-            await mongoose.connect(mongoUri);
-            isDbConnected = true;
-            console.log("✅ MongoDB connected successfully");
-            break;
-        } catch (err) {
-            retries--;
-            console.error(`❌ MongoDB connection error: ${err.message}`);
-            if (retries === 0) {
-                console.error("❌ All MongoDB connection attempts failed. Server running WITHOUT database.");
-            } else {
-                console.log(`   Retrying in 3 seconds... (${retries} retries left)`);
-                await new Promise(r => setTimeout(r, 3000));
-            }
+// ─── Database Initialization ─────────────────────────────────────────────────
+async function initDatabase() {
+    try {
+        const { isConnected, error } = await checkDbConnection();
+        if (isConnected) {
+            console.log("✅ PostgreSQL (Supabase) connected successfully");
+        } else {
+            console.warn(`⚠️ PostgreSQL (Supabase) status: ${error || 'Not ready'}`);
         }
+    } catch (err) {
+        console.error(`❌ PostgreSQL (Supabase) connection check error: ${err.message}`);
     }
 }
 
-connectDB();
+initDatabase();
 
 // ─── Root endpoint ──────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
     res.status(200).json({
         status: "ok",
-        message: "Futrix AI Node API v2.1.0",
+        message: "Futrix AI Node API v2.1.0 (PostgreSQL / Supabase)",
         endpoints: {
             health: "GET /health",
-            auth: ["POST /api/login", "POST /api/auth/google", "POST /api/auth/refresh", "POST /api/auth/logout", "GET /api/auth/verify"],
+            auth: ["POST /api/login", "POST /api/auth/firebase", "POST /api/auth/refresh", "POST /api/auth/logout", "GET /api/auth/verify"],
             analysis: ["POST /api/upload-resume", "GET /api/history", "GET /api/compare"],
             jobs: ["POST /api/jobs/match"],
+            ats: ["POST /api/ats-check"],
             profile: ["GET /api/profile", "PUT /api/profile"]
         }
     });
@@ -91,28 +81,34 @@ app.get("/", (req, res) => {
 app.use("/api", require("./routes/userRoutes"));
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
     const pythonUrl = (process.env.PYTHON_URL || "http://localhost:8000").replace(/\/$/, '');
     const isPythonConfigured = pythonUrl !== 'http://localhost:8000' && process.env.NODE_ENV !== 'development';
-    const dbState = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+    
+    let dbStatus = "connected";
+    try {
+        const { isConnected } = await checkDbConnection();
+        dbStatus = isConnected ? "connected" : "degraded";
+    } catch {
+        dbStatus = "disconnected";
+    }
 
     const health = {
         status: "ok",
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        database: dbState,
+        database: dbStatus,
         environment: process.env.NODE_ENV || "development",
         version: "2.1.0",
         services: {
             auth: "operational",
             analysis: "operational",
-            database: dbState === "connected" ? "operational" : "degraded",
+            database: dbStatus === "connected" ? "operational" : "degraded",
             python_ai: isPythonConfigured ? "configured" : "development",
         }
     };
 
-    const statusCode = (dbState === "connected" && isPythonConfigured) ? 200 : 200; // Return 200 for health probe
-    res.status(statusCode).json(health);
+    res.status(200).json(health);
 });
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
