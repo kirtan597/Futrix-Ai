@@ -7,7 +7,7 @@ All analysis is derived strictly from the pasted text — no hallucination.
 import json
 import os
 import re
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Optional, Tuple, Union
 
 # ─── Skills database ──────────────────────────────────────────────────────────
 try:
