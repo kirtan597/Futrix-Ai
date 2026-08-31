@@ -7,10 +7,11 @@
 ![Node API](https://img.shields.io/badge/Orchestrator-Express%20·%20Node.js-339933?style=for-the-badge&logo=nodedotjs)
 ![React Client](https://img.shields.io/badge/Frontend-React%2018%20·%20Vite%20·%20MUI-61DAFB?style=for-the-badge&logo=react)
 ![Database](https://img.shields.io/badge/Database-PostgreSQL%20·%20Supabase-3ECF8E?style=for-the-badge&logo=supabase)
+![Design System](https://img.shields.io/badge/UI%20Aesthetic-Monochrome%20Luxury%20SaaS-111111?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Deployment-Production%20Ready-brightgreen?style=for-the-badge)
 
 <p align="center">
-  <b>Futrix AI</b> is an enterprise-grade Career Intelligence & Career Twin platform. It combines deterministic, non-hallucinatory NLP resume skill extraction, intelligent gap analysis, ATS compatibility auditing, interactive SVG analytics, sequential career roadmap generation, and predictive trajectory matching.
+  <b>Futrix AI</b> is an enterprise-grade Career Intelligence & Career Twin platform. It combines deterministic, non-hallucinatory NLP resume skill extraction, intelligent gap analysis, ATS compatibility auditing, interactive pure SVG analytics, sequential career roadmap generation, and predictive trajectory matching.
 </p>
 
 </div>
@@ -18,84 +19,160 @@
 ---
 
 ## 📑 Table of Contents
-1. [System Architecture](#-system-architecture)
-2. [Key Features](#-key-features)
-3. [Interactive Data Visualizations](#-interactive-data-visualizations)
-4. [End-to-End User Flow](#-end-to-end-user-flow)
-5. [Database Schema & Migration](#-database-schema--migration)
+1. [System Architecture & Flows](#-system-architecture--flows)
+2. [Database Architecture (PostgreSQL / Supabase)](#-database-architecture-postgresql--supabase)
+3. [Key Features & Capabilities](#-key-features--capabilities)
+4. [Interactive Pure SVG Visualizations](#-interactive-pure-svg-visualizations)
+5. [End-to-End User Flow](#-end-to-end-user-flow)
 6. [Security & Authentication](#-security--authentication)
-7. [API Reference](#-api-reference)
+7. [API Gateway Reference](#-api-gateway-reference)
 8. [Local Development Setup](#-local-development-setup)
 9. [Production Deployment Guide](#-production-deployment-guide)
 
 ---
 
-## 🏛️ System Architecture
+## 🏛️ System Architecture & Flows
 
 Futrix AI is organized as a three-tier distributed microservices monorepo designed for high throughput, strict security, and zero-hallucination NLP analysis.
 
 ```mermaid
 flowchart TD
-    subgraph Client ["Frontend Layer (Netlify / Vercel)"]
-        UI["React 18 + Vite + MUI (SPA)"]
-        Charts["High-Fidelity Pure SVG Interactive Charts"]
-        Axios["API Client (Silent Refresh Queue + Error Interceptors)"]
+    subgraph ClientLayer ["Frontend Layer (React 18 + Vite + MUI)"]
+        SPA["React SPA (Port 5173 / Netlify)"]
+        Charts["Pure SVG Interactive Visualization Suite"]
+        AuthStore["Auth Store (JWT + Firebase State)"]
     end
 
-    subgraph Gateway ["Orchestration Layer (Render / Node.js)"]
-        NodeServer["Express API Server (Port 5000)"]
-        FirebaseSDK["Firebase Admin SDK Authentication"]
-        AuthMiddleware["JWT Verification & Rate Limiter"]
-        UserRouter["Auth, Resume, History, ATS, Compare, Job Match Routes"]
-        Postgres[("PostgreSQL / Supabase")]
+    subgraph GatewayLayer ["Orchestration & Gateway Layer (Node.js Express)"]
+        NodeAPI["Express Gateway Server (Port 5000 / Render)"]
+        FirebaseAuth["Firebase Admin SDK (OAuth Verifier)"]
+        AuthGuard["JWT Verification & Rate Limiter Middleware"]
+        UserRepo["PostgreSQL User & Analysis Repositories"]
     end
 
-    subgraph Engine ["AI Inference Layer (Render / Python FastAPI)"]
-        FastAPIServer["FastAPI Application (Port 8000)"]
-        InternalAuth["X-Internal-Secret Header Validator"]
+    subgraph DatabaseLayer ["Persistent Storage Layer (PostgreSQL / Supabase)"]
+        UsersTable[("public.users")]
+        TokensTable[("public.refresh_tokens")]
+        AnalysesTable[("public.analyses")]
+    end
+
+    subgraph InferenceLayer ["Inference Engine (Python FastAPI)"]
+        FastAPIServer["FastAPI Application (Port 8000 / Render)"]
         NLP["Deterministic NLP Skill Extractor"]
-        ATS["5-Pillar ATS Compatibility Engine"]
-        Scorer["Readiness & Trajectory Matrix Engine"]
+        ATS5["5-Pillar ATS Compatibility Engine"]
+        Scorer["Readiness Index & Trajectory Scorer"]
+        RoadmapGen["Sequential Milestone Roadmap Engine"]
     end
 
-    UI --> Charts
-    UI --> Axios
-    Axios -- "HTTPS / Bearer JWT" --> NodeServer
-    NodeServer --> FirebaseSDK
-    NodeServer --> AuthMiddleware
-    AuthMiddleware --> UserRouter
-    UserRouter -- "@supabase/supabase-js" --> Postgres
-    UserRouter -- "Internal HTTP / X-Internal-Secret" --> FastAPIServer
-    FastAPIServer --> InternalAuth
-    InternalAuth --> NLP
+    SPA --> Charts
+    SPA --> AuthStore
+    AuthStore -- "HTTPS / Bearer JWT" --> NodeAPI
+    NodeAPI --> FirebaseAuth
+    NodeAPI --> AuthGuard
+    AuthGuard --> UserRepo
+    UserRepo -- "@supabase/supabase-js" --> DatabaseLayer
+    UsersTable --- TokensTable
+    UsersTable --- AnalysesTable
+    NodeAPI -- "Internal HTTP / X-Internal-Secret" --> FastAPIServer
+    FastAPIServer --> NLP
+    FastAPIServer --> ATS5
     NLP --> Scorer
-    FastAPIServer --> ATS
+    Scorer --> RoadmapGen
 ```
 
 ---
 
-## ✨ Key Features
+## 🗄️ Database Architecture (PostgreSQL / Supabase)
 
-- **⚡ Deterministic Skill Extraction**: Strict boundary regex matching across technical domains with zero LLM hallucination risk.
-- **🎯 5-Pillar ATS Checker**: Comprehensive audit evaluating formatting risk, essential section presence, date parseability, keyword match, and text integrity.
-- **📊 Interactive Data Visualizations**: High-reliability SVG charts with dynamic cursor-following beams, glowing auras, and hover inspection cards.
+The persistent database layer is powered by **PostgreSQL on Supabase** with relational integrity, cascading foreign keys, JSONB report indexing, and automated timestamp triggers.
+
+```mermaid
+erDiagram
+    users ||--o{ refresh_tokens : "has many"
+    users ||--o{ analyses : "generates many"
+
+    users {
+        UUID id PK "DEFAULT gen_random_uuid()"
+        TEXT email UK "Normalized lowercase"
+        TEXT name "Display name"
+        TEXT auth_provider "firebase | google | email"
+        TEXT google_id "Google OAuth UID"
+        TEXT firebase_uid "Firebase Auth UID"
+        TEXT avatar "Profile avatar URL"
+        TEXT resume_text "Last uploaded resume text"
+        JSONB skills "Extracted technical skills array"
+        NUMERIC readiness_score "0-100 Aggregate Readiness Index"
+        TIMESTAMPTZ last_login "Last authentication timestamp"
+        INTEGER login_attempts "Brute-force security counter"
+        TIMESTAMPTZ lock_until "Account lockout timestamp"
+        TIMESTAMPTZ created_at "Creation timestamp"
+        TIMESTAMPTZ updated_at "Auto-updated via trigger"
+        TEXT mongo_id UK "Migration idempotency reference"
+    }
+
+    refresh_tokens {
+        UUID id PK "DEFAULT gen_random_uuid()"
+        UUID user_id FK "REFERENCES users(id) ON DELETE CASCADE"
+        TEXT token_hash "JWT refresh token string"
+        TIMESTAMPTZ expires_at "Expiration timestamp (7 days)"
+        TIMESTAMPTZ created_at "Issuance timestamp"
+        TIMESTAMPTZ revoked_at "Revocation timestamp on rotation/logout"
+    }
+
+    analyses {
+        UUID id PK "DEFAULT gen_random_uuid()"
+        UUID user_id FK "REFERENCES users(id) ON DELETE CASCADE"
+        TEXT email "Indexed user email"
+        TEXT resume_text "Uploaded resume content"
+        JSONB skills "Detected skill tokens array"
+        JSONB gap_skills "Identified priority skill gaps"
+        NUMERIC readiness_score "0-100 Score"
+        JSONB roadmap "Sequential milestone steps array"
+        JSONB score_breakdown "5-pillar competency scores"
+        JSONB career_paths "Role match trajectories & salaries"
+        JSONB skill_weights "Domain proficiencies & benchmarks"
+        JSONB category_distribution "Benchmark coverage breakdown"
+        JSONB readiness_trajectory "Milestone projection progression"
+        TIMESTAMPTZ created_at "Chronological sort timestamp"
+        TIMESTAMPTZ updated_at "Update timestamp"
+        TEXT mongo_id UK "Migration idempotency reference"
+    }
+```
+
+### Relational Schema Summary:
+- **`users` Table**: Central user account identity, Firebase/Google IDs, brute-force defense counters, and account lockout tracking.
+- **`refresh_tokens` Table**: Long-lived JWT tokens with automatic rotation on refresh and single-session revocation on logout.
+- **`analyses` Table**: Full persistent resume reports with JSONB structures for fast querying, chronological ordering (`created_at DESC`), and strict IDOR access isolation.
+
+---
+
+## ✨ Key Features & Capabilities
+
+- **⚡ Deterministic NLP Skill Extraction**: Strict boundary regex matching across technical domains with zero LLM hallucination risk.
+- **🎯 5-Pillar ATS Compatibility Checker**: Comprehensive audit evaluating layout safety, standard section presence, date parseability, keyword match, and text integrity.
+- **📊 Interactive Pure SVG Analytics**: High-reliability SVG charts with dynamic cursor-following beams, glowing auras, and hover inspection cards.
 - **🗺️ Sequential Career Roadmap**: Step-by-step milestone flowchart custom-tailored to bridge detected skill gaps.
-- **💼 Target Role Fit Analysis**: Ranked alignment percentages and salary insights across industry trajectories.
+- **💼 Target Role Fit Analysis**: Ranked alignment percentages and salary insights across prospective industry trajectories.
 - **🔒 Enterprise-Grade Security**: Dual Firebase Admin token verification + rotated JWT session tokens, rate limiting, and IDOR protection.
 
 ---
 
-## 📈 Interactive Data Visualizations
+## 📈 Interactive Pure SVG Visualizations
 
-| Chart Component | Location | Description & Capabilities |
+All data visualizations are custom-crafted in pure SVG for high reliability, zero layout collapsing, and smooth 60fps cursor interactions:
+
+| Component | Location | Visual Capabilities |
 | :--- | :--- | :--- |
 | **`ScoreArea`** | Dashboard | Smooth monotone score progression curve with dynamic cursor-tracking line, milestone pulse dots, and score tooltips. |
 | **`GapDonut`** | Dashboard / AI Analysis | Dual-arc SVG coverage gauge with center metric toggling between coverage % and gap % on hover. |
 | **`SkillRadar`** | Dashboard / AI Analysis | 5-axis spider competency radar (`Frontend`, `Backend`, `Cloud Infra`, `DevOps / CI`, `Databases`) with magnetic spoke hover highlighting. |
+| **`ATSBalanceRadar`** | ATS Checker | Pure SVG 5-pillar spider radar mapping parser safety, section headers, timeline dates, keywords, and encoding. |
+| **`ATSPillarPerformance`** | ATS Checker | Pure SVG horizontal benchmark bars with 70% ATS standard passing threshold line and delta badges. |
+| **`ATSScoreRing`** | ATS Checker | Radial SVG score gauge (0–100) with glowing color gradient and centered typography. |
 | **`SkillDistribution`** | Skills Gap | Pure SVG 4-tier distribution bar chart (`Have`, `Critical`, `High`, `Medium`) with value labels and hover beams. |
 | **`PriorityMatrix`** | Skills Gap | 2D Impact vs. Effort scatter matrix with collision-free alternating offsets and interactive inspection cards. |
+| **`PureSVGHistoryChart`** | History | Pure SVG monotone trajectory progression curve across all saved historical evaluations. |
 | **`RoadmapFlow`** | Career Path | Sequential SVG flowchart with active milestone glow and step numbering badges. |
-| **`RoleComparisonChart`**| Career Path | Ranked horizontal comparison bar chart across prospective engineering roles. |
 
 ---
 
@@ -110,7 +187,7 @@ sequenceDiagram
     participant AI as Python AI Engine
     participant DB as PostgreSQL (Supabase)
 
-    %% Auth Flow
+    %% Authentication Flow
     User->>SPA: Sign in with Google Popup or Email (Firebase)
     SPA->>SPA: Firebase returns ID Token
     SPA->>API: POST /api/auth/firebase { idToken }
@@ -126,21 +203,7 @@ sequenceDiagram
     AI-->>API: Return { skills, gap_skills, readiness_score, roadmap, career_paths }
     API->>DB: Save persistent analysis row in PostgreSQL
     API-->>SPA: Return complete analysis report
-    SPA->>SPA: Populate Dashboard, Skills Gap, and Career Path visualizations
-```
-
----
-
-## 🗄️ Database Schema & Migration
-
-Futrix AI uses PostgreSQL on **Supabase** with a relational schema and JSONB support for nested report analytics:
-- **`users`**: Account identity, OAuth provider UIDs, login attempts, and account lockout tracking.
-- **`refresh_tokens`**: Long-lived JWT tokens for secure rotation and single-session revocation.
-- **`analyses`**: Full resume report documents, skills, gap arrays, trajectory matrices, and scores.
-
-For migration from MongoDB Atlas to Supabase, refer to the [Migration Guide (MIGRATION.md)](file:///d:/Projects/Futrix-Ai/Futrix-Ai/MIGRATION.md) and execute:
-```bash
-node node-api/scripts/migrate-to-supabase.js --dry-run
+    SPA->>SPA: Populate Dashboard, Skills Gap, Career Path, ATS, and History views
 ```
 
 ---
@@ -149,25 +212,29 @@ node node-api/scripts/migrate-to-supabase.js --dry-run
 
 - **Firebase Admin SDK**: Server-side token validation for Google Sign-In and email authentication.
 - **Rotated Refresh Tokens**: 15-minute access tokens with 7-day refresh token rotation.
+- **IDOR Cross-User Data Isolation**: History, report retrieval, and comparison endpoints are strictly scoped to the authenticated user's ID and email.
 - **Strict Headers**: Configured Content Security Policy (CSP), Cross-Origin-Opener-Policy (`same-origin-allow-popups`), and CORS whitelist.
 - **Service Isolation**: Python AI engine accepts requests only with a verified `X-Internal-Secret` header.
 
 ---
 
-## 🚀 API Reference
+## 🚀 API Gateway Reference
 
 ### Authentication & User Management
 - `POST /api/auth/firebase` — Exchange Firebase ID token for JWT session pair.
 - `POST /api/auth/refresh` — Rotate and issue a new access token.
+- `POST /api/auth/logout` — Revoke active refresh token on server.
 - `POST /api/login` — Direct email authentication.
+- `GET  /api/auth/verify` — Verify active access token.
 - `GET  /api/profile` — Fetch authenticated user profile and stats.
+- `PUT  /api/profile` — Update user profile details.
 
-### Resume & Career Intelligence
-- `POST /api/upload-resume` — Analyze resume text, extract skills, calculate score, and generate roadmap.
+### Resume Intelligence & Analysis
+- `POST /api/upload-resume` — Analyze resume text, extract skills, calculate readiness index, and generate roadmap.
 - `POST /api/ats-check` — Perform 5-pillar ATS compatibility check.
 - `POST /api/jobs/match` — Match detected skillset against database of tech roles.
-- `GET  /api/history` — Retrieve authenticated user's analysis history.
-- `GET  /api/compare` — Compare two analysis documents with IDOR verification.
+- `GET  /api/history` — Retrieve authenticated user's analysis history (`created_at DESC`).
+- `GET  /api/compare` — Compare two analysis documents with IDOR verification and delta computation.
 
 ---
 
@@ -176,7 +243,7 @@ node node-api/scripts/migrate-to-supabase.js --dry-run
 ### Prerequisites
 - Node.js 18+
 - Python 3.10+
-- Supabase Project or local in-memory fallback
+- Supabase Project (or built-in local in-memory relational store)
 
 ### 1. Python AI Engine
 ```bash
