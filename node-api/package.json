@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo \"Node API build complete\"",
     "start": "node server.js",
     "dev": "node server.js"
   },
