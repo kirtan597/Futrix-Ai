@@ -204,7 +204,7 @@ export default function ResumeResult() {
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5, mb: 2.5 }}>
 
                 {/* Skills */}
-                <GlassCard sx={{ p: 3.5 }}>
+                <GlassCard sx={{ p: { xs: 2.5, md: 3.5 } }}>
                     <SectionTitle icon={<CheckCircleOutlineIcon sx={{ fontSize: 17 }} />} title="Identified Skills" count={data.skills.length} />
                     <Divider sx={{ mb: 2.5 }} />
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.9, mb: 3 }}>
@@ -231,7 +231,7 @@ export default function ResumeResult() {
                 </GlassCard>
 
                 {/* Gaps */}
-                <GlassCard sx={{ p: 3.5 }}>
+                <GlassCard sx={{ p: { xs: 2.5, md: 3.5 } }}>
                     <SectionTitle icon={<TrendingUpOutlinedIcon sx={{ fontSize: 17 }} />} title="Skill Gaps to Bridge" count={data.gap_skills.length} />
                     <Divider sx={{ mb: 2.5 }} />
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.9, mb: 3 }}>
@@ -254,7 +254,7 @@ export default function ResumeResult() {
                         endIcon={<EastIcon sx={{ fontSize: '13px !important' }} />}
                         onClick={() => navigate('/skills-gap')}
                         fullWidth
-                        sx={{ borderRadius: '9px', fontSize: '0.78rem' }}
+                        sx={{ borderRadius: '9px', fontSize: '0.82rem', minHeight: 44 }}
                     >
                         View Gap Analysis
                     </Button>

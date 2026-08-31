@@ -386,8 +386,8 @@ router.get("/upload-resume", (req, res) => {
     });
 });
 
-// ─── POST /api/upload-resume (5 uploads / hour) ───────────────────────────────
-router.post("/upload-resume", auth, rateLimiter(5, 60 * 60 * 1000, "Resume upload limit reached: maximum 5 analyses per hour. Please try again later."), async (req, res) => {
+// ─── POST /api/upload-resume (Generous limit for smooth usage) ───────────────
+router.post("/upload-resume", auth, rateLimiter(100, 15 * 60 * 1000, "Too many upload requests. Please wait a moment before trying again."), async (req, res) => {
     const { text } = req.body;
     
     if (!text || typeof text !== 'string' || text.trim().length < 50) {

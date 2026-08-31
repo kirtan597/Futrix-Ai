@@ -176,7 +176,7 @@ export default function UploadResume() {
             
             let displayError = errorMsg;
             if (errorMsg.includes('429') || errorMsg.includes('Rate limit') || errorMsg.includes('analyses per hour')) {
-                displayError = '⏳ Upload limit reached: maximum 5 analyses per hour. Please wait before uploading again.';
+                displayError = '⏳ Too many requests. Please wait a few seconds and click Retry.';
             } else if (errorMsg.includes('503') || errorMsg.includes('Service') || errorMsg.includes('unavailable') || errorMsg.includes('offline')) {
                 displayError = '🔄 The AI engine is temporarily busy or spinning up. Please click Retry below in a moment.';
             } else if (errorMsg.includes('timeout') || errorMsg.includes('504')) {
@@ -246,16 +246,16 @@ export default function UploadResume() {
                     </Box>
                 </Box>
 
-                {/* ── Main grid ── */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 288px' }, gap: { xs: 1.5, md: 2.5 } }}>
+                {/* ── Main grid with mobile-first order ── */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 288px' }, gap: { xs: 2, md: 2.5 } }}>
 
-                    {/* ── Upload card ── */}
-                    <Panel>
+                    {/* ── Upload card (order 1 on mobile) ── */}
+                    <Panel sx={{ order: { xs: 1, md: 'unset' } }}>
                         {/* Dropzone header */}
                         <Box
                             {...getRootProps()}
                             sx={{
-                                p: 3,
+                                p: { xs: 2, sm: 3 },
                                 borderBottom: '1px solid rgba(255,255,255,0.06)',
                                 borderRadius: '18px 18px 0 0',
                                 transition: 'background 0.2s',
@@ -269,11 +269,11 @@ export default function UploadResume() {
                                     <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>Drop your .txt file here</Typography>
                                 </Box>
                             ) : (
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
                                     <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
                                         Resume Text
                                     </Typography>
-                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                                         <input
                                             ref={fileInputRef}
                                             type="file"
@@ -298,7 +298,7 @@ export default function UploadResume() {
                                             size="small"
                                             onClick={() => fileInputRef.current?.click()}
                                             startIcon={<CloudUploadOutlinedIcon sx={{ fontSize: '14px !important' }} />}
-                                            sx={{ fontSize: '0.75rem', borderRadius: '8px', px: 1.5 }}
+                                            sx={{ fontSize: '0.78rem', borderRadius: '8px', px: 1.5, minHeight: 38 }}
                                         >
                                             Upload File
                                         </Button>
@@ -306,7 +306,7 @@ export default function UploadResume() {
                                             variant="outlined"
                                             size="small"
                                             onClick={() => { setResumeText(''); setError(''); }}
-                                            sx={{ fontSize: '0.75rem', borderRadius: '8px', px: 1.5 }}
+                                            sx={{ fontSize: '0.78rem', borderRadius: '8px', px: 1.5, minHeight: 38 }}
                                             disabled={!resumeText}
                                         >
                                             Clear
@@ -317,10 +317,10 @@ export default function UploadResume() {
                         </Box>
 
                         {/* Textarea + submit */}
-                        <Box component="form" onSubmit={handleUpload} sx={{ p: 3 }}>
+                        <Box component="form" onSubmit={handleUpload} sx={{ p: { xs: 2, sm: 3 } }}>
                             <TextField
                                 multiline
-                                minRows={13}
+                                minRows={10}
                                 maxRows={20}
                                 fullWidth
                                 placeholder={`Paste your resume text here...\n\ne.g.,  Skills: React, TypeScript, Python, Docker, AWS\nExperience: Software Engineer at Tech Corp (2021-Present)\n- Built scalable REST APIs using Node.js and PostgreSQL\n- Designed cloud infrastructure with Docker and Kubernetes`}
@@ -340,8 +340,8 @@ export default function UploadResume() {
                                     '& .MuiOutlinedInput-input': {
                                         '@media (max-width:600px)': {
                                             fontSize: '16px !important',
-                                            minHeight: '120px',
-                                            maxHeight: '300px',
+                                            minHeight: '140px',
+                                            maxHeight: '320px',
                                         },
                                         '@media (min-width:601px) and (max-width:960px)': {
                                             minHeight: '180px',
@@ -352,7 +352,7 @@ export default function UploadResume() {
                             />
 
                             {/* Char count & minimum validation status */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
                                 <Typography sx={{ 
                                     fontSize: '0.75rem', 
                                     color: charCount < 50 ? 'rgba(248,113,113,0.8)' : 'rgba(134,239,172,0.8)',
@@ -399,7 +399,8 @@ export default function UploadResume() {
                                 endIcon={<EastIcon />}
                                 sx={{
                                     py: 1.5,
-                                    fontSize: '0.9rem',
+                                    minHeight: 48,
+                                    fontSize: '0.92rem',
                                     fontWeight: 700,
                                     borderRadius: '10px',
                                     textTransform: 'none',
@@ -415,10 +416,10 @@ export default function UploadResume() {
                         </Box>
                     </Panel>
 
-                    {/* ── Sidebar cards ── */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {/* ── Sidebar cards (order 2 on mobile) ── */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, order: { xs: 2, md: 'unset' } }}>
                         {/* How it works */}
-                        <Panel sx={{ p: 3 }}>
+                        <Panel sx={{ p: { xs: 2.5, sm: 3 } }}>
                             <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', mb: 2 }}>
                                 How It Works
                             </Typography>
@@ -437,7 +438,7 @@ export default function UploadResume() {
                         </Panel>
 
                         {/* Tips */}
-                        <Panel sx={{ p: 3 }}>
+                        <Panel sx={{ p: { xs: 2.5, sm: 3 } }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                                 <TipsAndUpdatesOutlinedIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }} />
                                 <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>

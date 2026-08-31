@@ -453,13 +453,14 @@ export default function ATSCheck() {
                         </Alert>
                     )}
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 3, flexWrap: 'wrap', gap: 2 }}>
+                    {/* Form Action Controls */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 3, flexWrap: 'wrap', gap: 1.5 }}>
                         <Button
                             variant="text"
                             size="small"
                             onClick={handleClear}
                             disabled={loading || (!resumeText && !jobDescription)}
-                            sx={{ color: 'rgba(255,255,255,0.45)', textTransform: 'none', fontSize: '0.82rem', '&:hover': { color: '#fff' } }}
+                            sx={{ color: 'rgba(255,255,255,0.45)', textTransform: 'none', fontSize: '0.82rem', '&:hover': { color: '#fff' }, minHeight: 40 }}
                         >
                             Clear Form
                         </Button>
@@ -471,11 +472,13 @@ export default function ATSCheck() {
                             disabled={loading || resumeText.trim().length < 50}
                             onClick={handleSubmit}
                             sx={{
+                                width: { xs: '100%', sm: 'auto' },
                                 background: 'linear-gradient(135deg, #ffffff 0%, #d4d4d4 100%)',
                                 color: '#0a0a0a',
                                 fontWeight: 800,
-                                px: 4,
+                                px: { xs: 2.5, sm: 4 },
                                 py: 1.3,
+                                minHeight: 48,
                                 borderRadius: '12px',
                                 textTransform: 'none',
                                 fontSize: '0.92rem',
@@ -489,12 +492,12 @@ export default function ATSCheck() {
                             }}
                         >
                             {loading ? (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
                                     <CircularProgress size={18} sx={{ color: '#0a0a0a' }} />
                                     <span>Auditing 5 ATS Pillars...</span>
                                 </Box>
                             ) : (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                                     <span>Run 5-Pillar ATS Audit</span>
                                     <ArrowForwardIcon sx={{ fontSize: 16 }} />
                                 </Box>

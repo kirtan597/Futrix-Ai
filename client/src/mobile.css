@@ -220,9 +220,26 @@ a {
     }
 }
 
-/* ─── High-DPI screens optimization ─── */
+/* ─── Mobile Order & Hierarchy Helpers ─── */
+.order-mobile-1 {
+    order: 1 !important;
+}
+.order-mobile-2 {
+    order: 2 !important;
+}
+.order-mobile-3 {
+    order: 3 !important;
+}
+
+@media (min-width: 900px) {
+    .order-desktop-unset {
+        order: unset !important;
+    }
+}
+
+/* ─── High-DPI screens & Touch optimizations ─── */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    /* No additional changes needed, DPI handled by theme */
+    /* DPI handled by theme */
 }
 
 /* ─── Notch support (iPhone X+) ─── */
@@ -235,27 +252,29 @@ a {
     }
 }
 
-/* ─── Extra small device fixes ─── */
-@media (max-width: 360px) {
+/* ─── Mobile scroll container & overscroll ─── */
+.mobile-scroll-container {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    overflow-x: hidden;
+}
+
+/* ─── Extra small device fixes (<380px) ─── */
+@media (max-width: 380px) {
     body, html, #root {
         font-size: 13px;
     }
     
-    /* Aggressive padding reduction on ultra-small screens */
-    * {
-        --padding-x: 8px;
-        --padding-y: 6px;
-    }
-    
     button {
-        font-size: 12px;
-        padding: 8px 10px;
+        font-size: 13px !important;
+        padding: 8px 12px !important;
     }
     
-    /* Prevent layout shift with overflow-x */
+    /* Prevent horizontal overflow on ultra-small screens */
     body, html, #root {
         overflow-x: hidden;
         width: 100vw;
         max-width: 100%;
     }
 }
+

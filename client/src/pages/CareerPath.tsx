@@ -404,29 +404,17 @@ export default function CareerPath() {
                 <RoleComparisonChart roles={roleComparisonList} />
             </GlassCard>
 
-            {/* ── ROW 3: Main Flow (Roadmap flowchart + Role match cards) ── */}
+            {/* ── ROW 3: Main Flow (Roadmap flowchart + Role match cards with mobile-first order) ── */}
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '320px 1fr' }, gap: 2.5, opacity: mounted ? 1 : 0, transition: 'opacity 0.5s 0.1s' }}>
-                {/* SVG Learning Roadmap Flow */}
-                <GlassCard sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                        <TimelineOutlinedIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)' }} />
-                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)' }}>Roadmap Flow</Typography>
-                    </Box>
-                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', mb: 2.5 }}>
-                        Sequential step-by-step career path
-                    </Typography>
-                    <RoadmapFlow steps={roadmap} />
-                </GlassCard>
-
-                {/* Role match cards grid */}
-                <Box>
-                    <GlassCard sx={{ p: 3, mb: 2.5 }}>
+                {/* 1. Target Role match cards (Order 1 on mobile, Order 2 on desktop) */}
+                <Box sx={{ order: { xs: 1, lg: 2 } }}>
+                    <GlassCard sx={{ p: { xs: 2.5, md: 3 }, mb: 2.5 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <WorkOutlineIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)' }} />
                                 <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)' }}>Target Role Matches</Typography>
                             </Box>
-                            <Button size="small" variant="text" onClick={() => navigate('/skills-gap')} endIcon={<ArrowForwardIcon sx={{ fontSize: '13px !important' }} />} sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>
+                            <Button size="small" variant="text" onClick={() => navigate('/skills-gap')} endIcon={<ArrowForwardIcon sx={{ fontSize: '13px !important' }} />} sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', minHeight: 32 }}>
                                 View Gaps
                             </Button>
                         </Box>
@@ -449,6 +437,18 @@ export default function CareerPath() {
                         </Box>
                     </GlassCard>
                 </Box>
+
+                {/* 2. SVG Learning Roadmap Flow (Order 2 on mobile, Order 1 on desktop) */}
+                <GlassCard sx={{ p: { xs: 2.5, md: 3 }, order: { xs: 2, lg: 1 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        <TimelineOutlinedIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)' }} />
+                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.65)' }}>Roadmap Flow</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', mb: 2.5 }}>
+                        Sequential step-by-step career path
+                    </Typography>
+                    <RoadmapFlow steps={roadmap} />
+                </GlassCard>
             </Box>
         </Box>
     );
