@@ -3,6 +3,8 @@ import {
     getAuth,
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut as fbSignOut,
@@ -29,10 +31,39 @@ googleProvider.setCustomParameters({
 });
 
 /**
- * Sign in with Google Popup
+ * Sign in with Google.
+ * Tries popup first (best UX). Falls back to redirect if the browser
+ * blocks the popup (common in Safari, Firefox, and strict Chrome settings).
+ *
+ * IMPORTANT: signInWithPopup MUST be called as the very first async
+ * operation in the click handler — before any state updates — so the
+ * browser can verify it was triggered by a direct user gesture.
  */
-export async function signInWithGoogle(): Promise<UserCredential> {
-    return signInWithPopup(auth, googleProvider);
+export async function signInWithGoogle(): Promise<UserCredential | null> {
+    try {
+        return await signInWithPopup(auth, googleProvider);
+    } catch (err: unknown) {
+        const code = (err as { code?: string }).code ?? '';
+        // Fallback to redirect if popup was blocked or dismissed
+        if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
+            await signInWithRedirect(auth, googleProvider);
+            return null; // null = redirect in progress, result handled on next load
+        }
+        throw err; // re-throw all other errors (cancelled, network, etc.)
+    }
+}
+
+/**
+ * Get the result of a signInWithRedirect call.
+ * Call this once on mount in Login.tsx to handle the post-redirect return.
+ * Returns null if no redirect was pending.
+ */
+export async function getGoogleRedirectResult(): Promise<UserCredential | null> {
+    try {
+        return await getRedirectResult(auth);
+    } catch {
+        return null;
+    }
 }
 
 /**

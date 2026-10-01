@@ -22,7 +22,7 @@ import SpiralAnimation from '../components/SpiralAnimation';
 import ServiceStatus from '../components/ServiceStatus';
 import { useAuth } from '../store/useAuth';
 import apiService from '../services/apiService';
-import { signInWithGoogle, loginWithEmail, registerWithEmail } from '../services/firebase';
+import { signInWithGoogle, getGoogleRedirectResult, loginWithEmail, registerWithEmail } from '../services/firebase';
 
 const FEATURES = [
     { label: 'AI Skill Extraction',  desc: 'Detects 40+ technologies from your resume' },
@@ -67,7 +67,6 @@ export default function Login() {
 
     const getErrorMessage = (err: unknown, fallback: string) => {
         if (err instanceof Error) {
-            // Friendly Firebase error translation
             if (err.message.includes('auth/invalid-credential') || err.message.includes('auth/wrong-password')) {
                 return 'Invalid email or password. Please check and try again.';
             }
@@ -97,16 +96,43 @@ export default function Login() {
         navigate(fromPath, { replace: true });
     };
 
+    // Handle return from signInWithRedirect (popup-blocked fallback)
+    // Must be after exchangeFirebaseToken is defined.
+    useEffect(() => {
+        let cancelled = false;
+        getGoogleRedirectResult().then(async (userCred) => {
+            if (cancelled || !userCred) return;
+            setLoading(true);
+            try {
+                const idToken = await userCred.user.getIdToken();
+                await exchangeFirebaseToken(idToken);
+            } catch (err: unknown) {
+                setError(getErrorMessage(err, 'Google sign-in failed. Please try again.'));
+                setLoading(false);
+            }
+        });
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleGoogleLogin = async () => {
-        setLoading(true);
-        setError('');
+        // ⚠️ signInWithGoogle MUST be called first — before any setState —
+        // so the browser recognises this as a direct user-gesture and allows the popup.
         try {
             const userCred = await signInWithGoogle();
+            if (!userCred) {
+                // Redirect triggered (popup was blocked) — page will reload
+                setLoading(true);
+                setError('');
+                return;
+            }
+            setLoading(true);
+            setError('');
             const idToken = await userCred.user.getIdToken();
             await exchangeFirebaseToken(idToken);
         } catch (err: unknown) {
-            setError(getErrorMessage(err, 'Google sign-in failed. Please try again.'));
             setLoading(false);
+            setError(getErrorMessage(err, 'Google sign-in failed. Please try again.'));
         }
     };
 
