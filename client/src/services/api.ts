@@ -164,13 +164,17 @@ export const verifyToken = () =>
     api.get<{ valid: boolean; user: AuthUser }>('/api/auth/verify');
 
 // ─── Resume ──────────────────────────────────────────────────────────────────
-export interface AnalyzePayload { text: string; email: string }
+// NOTE: Server uses req.user.email from JWT — do not include email in payload
+export interface AnalyzePayload { text: string }
 export const analyzeResume = (payload: AnalyzePayload) =>
     api.post('/api/upload-resume', payload);
 
+
 // ─── History ─────────────────────────────────────────────────────────────────
-export const fetchHistory = (email: string) =>
-    api.get(`/api/history?email=${encodeURIComponent(email)}`);
+// NOTE: Server uses req.user.email from JWT — no email param needed
+export const fetchHistory = () =>
+    api.get(`/api/history`);
+
 
 // ─── Compare two analyses ─────────────────────────────────────────────────────
 export const compareAnalyses = (id1: string, id2: string) =>

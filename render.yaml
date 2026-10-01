@@ -22,13 +22,19 @@ services:
         generateValue: true
       - key: INTERNAL_API_SECRET
         generateValue: true
+      # IMPORTANT: PYTHON_URL must be a full https:// URL.
+      # After first deploy, copy the Python AI service URL from Render dashboard
+      # and set it here manually, e.g. https://futrix-python-ai.onrender.com
       - key: PYTHON_URL
-        fromService:
-          name: futrix-python-ai
-          type: web
-          property: host
+        sync: false          # Set to full https:// URL of futrix-python-ai service in Render dashboard
       - key: FRONTEND_URL
         sync: false          # Set to your Netlify URL in Render dashboard
+      - key: FIREBASE_PROJECT_ID
+        sync: false          # Set in Render dashboard
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false          # Set in Render dashboard
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false          # Set in Render dashboard (paste full PEM key)
 
   # ─── Python AI Engine ─────────────────────────────────────────────────────
   - type: web
@@ -43,3 +49,10 @@ services:
         value: 10000
       - key: PYTHON_VERSION
         value: 3.11.0
+      # CRITICAL: Must match INTERNAL_API_SECRET in futrix-node-api.
+      # Copy the generated value from the node-api service and paste it here.
+      - key: INTERNAL_API_SECRET
+        sync: false          # Set to same value as futrix-node-api INTERNAL_API_SECRET
+      # Add your node-api host and frontend URL here (comma-separated)
+      - key: ALLOWED_ORIGINS
+        sync: false          # e.g. https://futrix-node-api.onrender.com,https://futrixai.netlify.app

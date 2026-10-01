@@ -26,7 +26,7 @@ import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { atsCheck } from '../services/api';
+import apiService from '../services/apiService';
 import ATSBalanceRadar, { ATSPillarData } from '../components/charts/ATSBalanceRadar';
 import ATSPillarPerformance from '../components/charts/ATSPillarPerformance';
 import ATSScoreRing from '../components/charts/ATSScoreRing';
@@ -232,13 +232,13 @@ export default function ATSCheck() {
         setError('');
 
         try {
-            const res = await atsCheck({
+            const result = await apiService.post<ATSResult>('/api/ats-check', {
                 resume: resumeText.trim(),
                 target_role: jobDescription.trim() || undefined,
             });
-            setResult(res.data as ATSResult);
-        } catch (err: any) {
-            const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'ATS check failed. Please check your connection and try again.';
+            setResult(result);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'ATS check failed. Please check your connection and try again.';
             setError(msg);
         } finally {
             setLoading(false);
