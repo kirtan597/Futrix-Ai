@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   upload-resume.css — Futrix AI
+   Upload Resume page styles — dropzone, file preview, upload progress
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All upload-resume page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+

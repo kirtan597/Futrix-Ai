@@ -1,8 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 const isConfigured = Boolean(
     SUPABASE_URL &&
@@ -239,30 +239,45 @@ function createMemoryQueryBuilder(tableName) {
     };
 }
 
-const supabase = isConfigured
-    ? realSupabase
-    : {
-        from: (tableName) => createMemoryQueryBuilder(tableName),
-    };
+let fallbackMode = !isConfigured;
+
+const supabase = {
+    from: (tableName) => {
+        if (!isConfigured || fallbackMode) {
+            return createMemoryQueryBuilder(tableName);
+        }
+        return realSupabase.from(tableName);
+    },
+    enableFallback: () => {
+        fallbackMode = true;
+    },
+    get isFallback() {
+        return fallbackMode;
+    }
+};
 
 /**
  * Health check helper to verify Supabase PostgreSQL connectivity
  * @returns {Promise<{ isConnected: boolean, error?: string }>}
  */
 async function checkDbConnection() {
-    if (!isConfigured) {
+    if (!isConfigured || fallbackMode) {
         return { isConnected: true, message: 'In-memory Relational Store (Dev/Local)' };
     }
     try {
-        const { error } = await supabase
+        const { error } = await realSupabase
             .from('users')
             .select('id', { head: true, count: 'exact' });
 
         if (error) {
+            console.warn(`[Supabase] ⚠️ Remote DB error (${error.message}). Falling back to in-memory store.`);
+            fallbackMode = true;
             return { isConnected: false, error: error.message };
         }
         return { isConnected: true };
     } catch (err) {
+        console.warn(`[Supabase] ⚠️ Remote DB unreachable (${err.message}). Falling back to in-memory store.`);
+        fallbackMode = true;
         return { isConnected: false, error: err.message };
     }
 }
@@ -271,4 +286,5 @@ module.exports = {
     supabase,
     checkDbConnection,
     isConfigured,
+    createMemoryQueryBuilder,
 };

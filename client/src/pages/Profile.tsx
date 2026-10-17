@@ -107,15 +107,12 @@ export default function Profile() {
         <Box sx={{ minHeight: '100vh', background: '#0a0a0a', py: { xs: 3, md: 5 }, px: { xs: 2, sm: 3, md: 5 } }}>
 
             {/* Header */}
-            <Box sx={{ mb: 5, opacity: mounted ? 1 : 0, transition: 'opacity 0.5s' }}>
+            <Box sx={{ mb: 3.5, opacity: mounted ? 1 : 0, transition: 'opacity 0.5s' }}>
                 <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.14em', textTransform: 'uppercase', mb: 0.8 }}>
                     Account
                 </Typography>
-                <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em', mb: 0.8 }}>
+                <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em' }}>
                     Profile
-                </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.88rem' }}>
-                    Manage your account and authentication settings
                 </Typography>
             </Box>
 

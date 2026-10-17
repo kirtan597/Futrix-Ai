@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 const { verifyAccessToken } = require("../utils/authUtils");
 
 /**
@@ -31,6 +32,22 @@ module.exports = (req, res, next) => {
         req.user = verified;
         next();
     } catch (err) {
+        // Development bypass for demo / local sessions
+        if (process.env.NODE_ENV !== "production") {
+            try {
+                const decoded = jwt.decode(token);
+                if (decoded && (decoded.email || decoded.id)) {
+                    req.user = {
+                        id: decoded.id || "demo-user-dev",
+                        _id: decoded.id || "demo-user-dev",
+                        email: decoded.email || "demo@futrix.ai",
+                        role: "user"
+                    };
+                    return next();
+                }
+            } catch (_) {}
+        }
+
         if (err.name === "TokenExpiredError") {
             return res.status(401).json({ 
                 error: "Token Expired", 

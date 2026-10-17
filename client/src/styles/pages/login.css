@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   login.css — Futrix AI
+   Login page styles — auth card, form fields, Google button, background effects
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All login page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+

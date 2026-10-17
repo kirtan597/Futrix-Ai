@@ -1,0 +1,46 @@
+﻿/* ─────────────────────────────────────────────────────────────────────────────
+   mobile.css — Futrix AI
+   Mobile Responsive Rules · Breakpoints · Landscape · DPI
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ─── Typography scaling ──────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  h1, h2, h3, h4, h5, h6 {
+    word-break: break-word;
+    hyphens: auto;
+  }
+}
+
+/* ─── Mobile landscape optimizations ─────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  body { font-size: 12px; }
+  button { padding: 6px 12px; }
+  [role="button"] { padding: 4px 8px; }
+}
+
+/* ─── Extra small device fixes (<380px) ──────────────────────────────────── */
+@media (max-width: 380px) {
+  body, html, #root {
+    font-size: 13px;
+    overflow-x: hidden;
+    width: 100vw;
+    max-width: 100%;
+  }
+
+  button {
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+  }
+}
+
+/* ─── Old phone fixes (<360px) ───────────────────────────────────────────── */
+@media (max-width: 360px) {
+  body { font-size: 14px; }
+
+  h1, h2, h3, h4, h5, h6 { word-break: break-word; }
+
+  button {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}

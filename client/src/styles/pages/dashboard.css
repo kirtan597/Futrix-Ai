@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   dashboard.css — Futrix AI
+   Dashboard page styles — stats grid, score panels, welcome section
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All dashboard page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+

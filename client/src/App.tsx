@@ -6,7 +6,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 
-import theme from './theme';
+import theme from './config/theme';
 import Sidebar from './components/Sidebar';
 import { useAuth } from './store/useAuth';
 

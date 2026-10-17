@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   career-path.css — Futrix AI
+   Career Path page styles — career timeline, role cards, progression
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All career-path page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+

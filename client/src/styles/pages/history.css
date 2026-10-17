@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   history.css — Futrix AI
+   History page styles — analysis list, date groups, comparison view
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All history page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+

@@ -7,13 +7,11 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
-import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined';
 import EastIcon from '@mui/icons-material/East';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -206,8 +204,8 @@ export default function UploadResume() {
                 boxSizing: 'border-box',
             }}>
                 {/* ── Header ── */}
-                <Box sx={{ mb: 5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                <Box sx={{ mb: 4 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
                             width: 36, height: 36, borderRadius: '10px',
                             background: 'rgba(255,255,255,0.06)',
@@ -224,25 +222,6 @@ export default function UploadResume() {
                                 Upload Resume
                             </Typography>
                         </Box>
-                    </Box>
-                    <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', lineHeight: 1.7, ml: { xs: 0, sm: '52px' }, maxWidth: 500, mb: 2 }}>
-                        Our AI engine extracts skills strictly from your pasted text — no assumptions, no hallucinations. Only what you write is analyzed.
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', ml: { xs: 0, sm: '52px' } }}>
-                        {['Text-Only Detection', 'Gap Analysis', 'Score 0–100', 'Roadmap'].map((f) => (
-                            <Chip
-                                key={f}
-                                label={f}
-                                size="small"
-                                icon={<CheckCircleOutlineIcon sx={{ fontSize: '12px !important', color: 'rgba(255,255,255,0.3) !important' }} />}
-                                sx={{
-                                    background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    color: 'rgba(255,255,255,0.4)',
-                                    fontWeight: 600, fontSize: '0.73rem',
-                                }}
-                            />
-                        ))}
                     </Box>
                 </Box>
 

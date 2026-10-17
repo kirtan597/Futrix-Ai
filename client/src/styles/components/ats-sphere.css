@@ -1,0 +1,268 @@
+/* ==========================================================================
+   ATSSphere — 3D Animated Sphere Component Styles
+   Theme: Luxury Monochromatic (Obsidian, Silver, Pure White)
+   ========================================================================== */
+
+.ats-sphere-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.012) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ats-sphere-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 255, 255, 0.04);
+}
+
+/* Atmospheric Ambient Background Glow */
+.ats-sphere-ambient {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 260px;
+  height: 260px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 45%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(20px);
+  pointer-events: none;
+  animation: ambientBreath 6s ease-in-out infinite alternate;
+}
+
+/* 3D Viewport Wrapper */
+.ats-sphere-stage {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+
+/* Floating 3D Orb */
+.ats-sphere-orb {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(220, 220, 220, 0.75) 14%,
+    rgba(80, 80, 80, 0.85) 45%,
+    rgba(20, 20, 20, 0.98) 75%,
+    #050505 100%
+  );
+  box-shadow:
+    inset -12px -12px 30px rgba(0, 0, 0, 0.95),
+    inset 8px 8px 24px rgba(255, 255, 255, 0.45),
+    0 18px 40px rgba(0, 0, 0, 0.75),
+    0 0 35px rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  animation: sphereFloat 4.5s ease-in-out infinite;
+  user-select: none;
+}
+
+/* Specular Highlight Sheen */
+.ats-sphere-sheen {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  width: 38px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 75%);
+  transform: rotate(-35deg);
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+/* 3D Gyro Orbital Ring 1 */
+.ats-sphere-ring-1 {
+  position: absolute;
+  width: 165px;
+  height: 165px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  animation: orbitSpin1 8s linear infinite;
+  transform-style: preserve-3d;
+}
+
+/* 3D Gyro Orbital Ring 2 */
+.ats-sphere-ring-2 {
+  position: absolute;
+  width: 152px;
+  height: 152px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-left-color: #ffffff;
+  pointer-events: none;
+  animation: orbitSpin2 12s linear infinite reverse;
+  transform-style: preserve-3d;
+}
+
+/* 3D Gyro Orbital Ring 3 (Outer Pulsing Ring) */
+.ats-sphere-ring-3 {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-right-color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  animation: orbitSpin3 16s linear infinite;
+  transform-style: preserve-3d;
+}
+
+/* Centered Score Badge Content inside the 3D Sphere */
+.ats-sphere-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  transform: translateZ(28px);
+}
+
+.ats-sphere-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.ats-sphere-score {
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: #ffffff;
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(255, 255, 255, 0.55);
+}
+
+.ats-sphere-total {
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Bottom Status Pill */
+.ats-sphere-status {
+  margin-top: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.ats-sphere-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff;
+  animation: dotPulse 2s ease-in-out infinite alternate;
+}
+
+/* Keyframe Animations */
+@keyframes sphereFloat {
+  0%, 100% {
+    transform: translateY(0px) rotateX(2deg) rotateY(-2deg);
+  }
+  50% {
+    transform: translateY(-8px) rotateX(-2deg) rotateY(3deg);
+  }
+}
+
+@keyframes orbitSpin1 {
+  0% {
+    transform: rotateX(65deg) rotateY(15deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(65deg) rotateY(15deg) rotateZ(360deg);
+  }
+}
+
+@keyframes orbitSpin2 {
+  0% {
+    transform: rotateX(35deg) rotateY(-30deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(35deg) rotateY(-30deg) rotateZ(360deg);
+  }
+}
+
+@keyframes orbitSpin3 {
+  0% {
+    transform: rotateX(80deg) rotateY(45deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(80deg) rotateY(45deg) rotateZ(360deg);
+  }
+}
+
+@keyframes ambientBreath {
+  0% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes dotPulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}

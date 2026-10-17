@@ -156,9 +156,6 @@ export default function ResumeResult() {
                     <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em' }}>
                         Resume Result
                     </Typography>
-                    <Typography sx={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.83rem', mt: 0.8 }}>
-                        Full breakdown of your career intelligence report
-                    </Typography>
                 </Box>
                 <Button variant="outlined" size="small" startIcon={<UploadFileOutlinedIcon />} onClick={() => navigate('/upload')} sx={{ borderRadius: '9px', fontSize: '0.8rem' }}>
                     Re-analyze

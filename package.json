@@ -6,11 +6,15 @@
   "scripts": {
     "dev": "concurrently --kill-others --names \"PYTHON,NODE,REACT\" --prefix-colors \"cyan,yellow,magenta\" \"npm run dev:python\" \"npm run dev:node\" \"npm run dev:client\"",
     "dev:python": "cd python-ai && uvicorn main:app --reload --port 8000",
-    "dev:node": "cd node-api && node server.js",
+    "dev:node": "cd node-api && node --watch server.js",
     "dev:client": "cd client && npm run dev",
     "dev:log": "concurrently --kill-others --names \"PYTHON,NODE,REACT\" --prefix-colors \"cyan.bold,yellow.bold,magenta.bold\" --timestamp-format \"HH:mm:ss\" -t \"npm run dev:python\" \"npm run dev:node\" \"npm run dev:client\"",
     "install:all": "cd node-api && npm install && cd ../client && npm install",
-    "build": "cd client && npm run build"
+    "build": "cd client && npm run build",
+    "test:python": "cd python-ai && python -m pytest",
+    "test:node": "cd node-api && npm test",
+    "test:client": "cd client && npm run build && npm run lint",
+    "test": "npm run test:python && npm run test:node && npm run test:client"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

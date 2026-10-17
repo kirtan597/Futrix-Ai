@@ -36,14 +36,30 @@ function formatUser(row) {
 async function findByEmail(email) {
     if (!email) return null;
     const normalized = email.trim().toLowerCase();
-    const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', normalized)
-        .maybeSingle();
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', normalized)
+            .maybeSingle();
 
-    if (error) throw new Error(`[userRepo.findByEmail] ${error.message}`);
-    return formatUser(data);
+        if (error) {
+            if (supabase.enableFallback) {
+                supabase.enableFallback();
+                const fallbackRes = await supabase.from('users').select('*').eq('email', normalized).maybeSingle();
+                return formatUser(fallbackRes.data);
+            }
+            throw new Error(`[userRepo.findByEmail] ${error.message}`);
+        }
+        return formatUser(data);
+    } catch (err) {
+        if (supabase.enableFallback) {
+            supabase.enableFallback();
+            const fallbackRes = await supabase.from('users').select('*').eq('email', normalized).maybeSingle();
+            return formatUser(fallbackRes.data);
+        }
+        throw err;
+    }
 }
 
 /**
@@ -53,16 +69,36 @@ async function findById(id) {
     if (!id) return null;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     
-    let query = supabase.from('users').select('*');
-    if (isUuid) {
-        query = query.eq('id', id);
-    } else {
-        query = query.eq('mongo_id', id);
-    }
+    try {
+        let query = supabase.from('users').select('*');
+        if (isUuid) {
+            query = query.eq('id', id);
+        } else {
+            query = query.eq('mongo_id', id);
+        }
 
-    const { data, error } = await query.maybeSingle();
-    if (error) throw new Error(`[userRepo.findById] ${error.message}`);
-    return formatUser(data);
+        const { data, error } = await query.maybeSingle();
+        if (error) {
+            if (supabase.enableFallback) {
+                supabase.enableFallback();
+                let fbQuery = supabase.from('users').select('*');
+                fbQuery = isUuid ? fbQuery.eq('id', id) : fbQuery.eq('mongo_id', id);
+                const fbRes = await fbQuery.maybeSingle();
+                return formatUser(fbRes.data);
+            }
+            throw new Error(`[userRepo.findById] ${error.message}`);
+        }
+        return formatUser(data);
+    } catch (err) {
+        if (supabase.enableFallback) {
+            supabase.enableFallback();
+            let fbQuery = supabase.from('users').select('*');
+            fbQuery = isUuid ? fbQuery.eq('id', id) : fbQuery.eq('mongo_id', id);
+            const fbRes = await fbQuery.maybeSingle();
+            return formatUser(fbRes.data);
+        }
+        throw err;
+    }
 }
 
 /**
@@ -81,14 +117,30 @@ async function createUser(userData) {
         login_attempts: 0,
     };
 
-    const { data, error } = await supabase
-        .from('users')
-        .insert(payload)
-        .select('*')
-        .single();
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .insert(payload)
+            .select('*')
+            .single();
 
-    if (error) throw new Error(`[userRepo.createUser] ${error.message}`);
-    return formatUser(data);
+        if (error) {
+            if (supabase.enableFallback) {
+                supabase.enableFallback();
+                const fbRes = await supabase.from('users').insert(payload).select('*').single();
+                return formatUser(fbRes.data);
+            }
+            throw new Error(`[userRepo.createUser] ${error.message}`);
+        }
+        return formatUser(data);
+    } catch (err) {
+        if (supabase.enableFallback) {
+            supabase.enableFallback();
+            const fbRes = await supabase.from('users').insert(payload).select('*').single();
+            return formatUser(fbRes.data);
+        }
+        throw err;
+    }
 }
 
 /**
@@ -107,17 +159,38 @@ async function updateUser(id, updates) {
     if (updates.readinessScore !== undefined) payload.readiness_score = updates.readinessScore;
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    let query = supabase.from('users').update(payload);
 
-    if (isUuid) {
-        query = query.eq('id', id);
-    } else {
-        query = query.eq('mongo_id', id);
+    try {
+        let query = supabase.from('users').update(payload);
+
+        if (isUuid) {
+            query = query.eq('id', id);
+        } else {
+            query = query.eq('mongo_id', id);
+        }
+
+        const { data, error } = await query.select('*').single();
+        if (error) {
+            if (supabase.enableFallback) {
+                supabase.enableFallback();
+                let fbQuery = supabase.from('users').update(payload);
+                fbQuery = isUuid ? fbQuery.eq('id', id) : fbQuery.eq('mongo_id', id);
+                const fbRes = await fbQuery.select('*').single();
+                return formatUser(fbRes.data);
+            }
+            throw new Error(`[userRepo.updateUser] ${error.message}`);
+        }
+        return formatUser(data);
+    } catch (err) {
+        if (supabase.enableFallback) {
+            supabase.enableFallback();
+            let fbQuery = supabase.from('users').update(payload);
+            fbQuery = isUuid ? fbQuery.eq('id', id) : fbQuery.eq('mongo_id', id);
+            const fbRes = await fbQuery.select('*').single();
+            return formatUser(fbRes.data);
+        }
+        throw err;
     }
-
-    const { data, error } = await query.select('*').single();
-    if (error) throw new Error(`[userRepo.updateUser] ${error.message}`);
-    return formatUser(data);
 }
 
 /**

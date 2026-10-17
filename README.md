@@ -1,444 +1,514 @@
 <div align="center">
 
-# ⚡ Futrix AI
+# ⚡ Futrix AI — Career Intelligence Twin
 
-### Autonomous Career Intelligence Platform
+### Enterprise-Grade Deterministic Career Intelligence & AI Resume Optimization Platform
 
-**Deterministic resume analysis · AI skill gap detection · ATS scoring · Career path matching**
+**Zero-Hallucination Resume Analysis · 5-Pillar ATS Scoring · Skill Gap Diagnostic · Interactive Career Path Modeling**
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://python.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-2.1-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
-[![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Firebase](https://img.shields.io/badge/Firebase-Admin%20%26%20Auth-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 
 </div>
 
 ---
 
-## 📐 Architecture
+## 📑 Table of Contents
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    BROWSER / React Client                     │
-│     Vite + TypeScript + MUI · Firebase Web SDK               │
-│     Routes: /login /upload /dashboard /skills-gap             │
-│             /career-path /ats-check /history /profile         │
-└────────────────────────┬─────────────────────────────────────┘
-                         │ HTTPS  JWT Bearer token
-                         │
-┌────────────────────────▼─────────────────────────────────────┐
-│              Node.js API  (Express v5)                        │
-│              node-api/  ·  Port 5000                          │
-│                                                               │
-│  Middleware Stack:                                            │
-│  cors → json → auth(JWT) → rateLimiter → route → error       │
-│                                                               │
-│  Auth: Firebase Admin SDK + JWT (15m access / 7d refresh)    │
-│  DB:   Supabase (users, analyses, refresh_tokens)            │
-└────────────────────────┬─────────────────────────────────────┘
-                         │ HTTP  X-Internal-Secret
-                         │  (never exposed to browser)
-┌────────────────────────▼─────────────────────────────────────┐
-│           Python AI Engine  (FastAPI + Uvicorn)              │
-│           python-ai/  ·  Port 8000                           │
-│                                                               │
-│  Endpoints: /analyze /ats-check /score-breakdown             │
-│             /career-path /compare                            │
-│  Engine:    Deterministic NLP · skills_db.json (40+ skills)  │
-└──────────────────────────────────────────────────────────────┘
-                         │
-┌────────────────────────▼─────────────────────────────────────┐
-│                 Supabase (PostgreSQL)                         │
-│  Tables: users · analyses · refresh_tokens                   │
-└──────────────────────────────────────────────────────────────┘
+- [System Architecture](#-system-architecture)
+- [Component Hierarchy & UI System](#-component-hierarchy--ui-system)
+- [End-to-End Data & Execution Flow](#-end-to-end-data--execution-flow)
+- [Multi-Provider Authentication & Token Rotation](#-multi-provider-authentication--token-rotation)
+- [Deterministic AI Engine & 5-Pillar ATS Heuristics](#-deterministic-ai-engine--5-pillar-ats-heuristics)
+- [Project Directory Structure](#-project-directory-structure)
+- [API Endpoint Reference](#-api-endpoint-reference)
+- [Database Entity-Relationship Model](#-database-entity-relationship-model)
+- [Local Development & Testing](#-local-development--testing)
+- [Production Deployment](#-production-deployment)
+- [Security Model & Rate Limiting](#-security-model--rate-limiting)
+
+---
+
+## 📐 System Architecture
+
+Futrix AI is architected as an enterprise decoupled monorepo comprising a modern Single-Page Application (SPA), a secure API Gateway/BFF with persistent Supabase PostgreSQL storage, and a high-throughput deterministic Python NLP Microservice.
+
+```mermaid
+flowchart TB
+    subgraph ClientLayer["🖥️ Frontend Client (Port 5173 / Production CDN)"]
+        UI["React 18 SPA + Vite + TypeScript"]
+        Theme["Material UI (MUI v5) Dark Glassmorphism"]
+        Zustand["Zustand State Stores (useAuth, useResume, useErrorStore)"]
+        HTTPClient["Resilient API Client (Fetch + Auto Token Refresh)"]
+        UI --> Theme
+        UI --> Zustand
+        UI --> HTTPClient
+    end
+
+    subgraph GatewayLayer["🛡️ Backend API Gateway (Port 5000 / Node.js Express)"]
+        ProxyRouter["Express Router & Controller Layer"]
+        CORS["Strict CORS Whitelist"]
+        AuthMW["JWT Bearer Authentication & IDOR Guard"]
+        RateLimiter["Sliding-Window Rate Limiter"]
+        UserRepo["User Repository"]
+        AnalysisRepo["Analysis Repository"]
+        TokenRepo["Refresh Token Repository"]
+        Warmer["Service Warmer (Cold-start mitigation)"]
+
+        ProxyRouter --> CORS --> RateLimiter --> AuthMW
+        AuthMW --> UserRepo
+        AuthMW --> AnalysisRepo
+        AuthMW --> TokenRepo
+    end
+
+    subgraph AILayer["🧠 AI Engine Microservice (Port 8000 / FastAPI + Python)"]
+        FastAPIApp["FastAPI REST App"]
+        InternalSecretAuth["X-Internal-Secret Auth Dependency"]
+        DeterministicNLP["Deterministic Skill Extractor (Regex + Word Boundaries)"]
+        SkillDB[("Taxonomy: skills_db.json (40+ Technologies)")]
+        GapEngine["Skill Gap & Roadmap Generator"]
+        ATSChecker["5-Pillar ATS Auditing Heuristic Engine"]
+        CareerMatrix["Career Path & Benchmark Scoring Matrix"]
+
+        FastAPIApp --> InternalSecretAuth
+        InternalSecretAuth --> DeterministicNLP
+        DeterministicNLP --- SkillDB
+        DeterministicNLP --> GapEngine
+        DeterministicNLP --> ATSChecker
+        DeterministicNLP --> CareerMatrix
+    end
+
+    subgraph DataLayer["🗄️ Persistence & Identity Cloud"]
+        SupabaseDB[("Supabase PostgreSQL\n- users\n- analyses (JSONB)\n- refresh_tokens")]
+        FirebaseCloud["Firebase Auth / Google Identity Services"]
+    end
+
+    %% Inter-tier connections
+    HTTPClient -->|"HTTPS / REST (JWT Bearer)"| ProxyRouter
+    UserRepo -->|"PostgreSQL (Connection Pool)"| SupabaseDB
+    AnalysisRepo -->|"PostgreSQL (JSONB Storage)"| SupabaseDB
+    TokenRepo -->|"PostgreSQL (SHA-256 Hashes)"| SupabaseDB
+    GatewayLayer -->|"Internal HTTP + X-Internal-Secret"| FastAPIApp
+    GatewayLayer -.->|"Token Verification"| FirebaseCloud
+    Warmer -.->|"Periodic Liveness Probes"| FastAPIApp
 ```
 
 ---
 
-## 🔐 Authentication Flow
+## 🧩 Component Hierarchy & UI System
 
-```
-User (Browser)              Node API                Firebase Admin
-     │                          │                         │
-     │──── Email/Password ─────►│                         │
-     │                          │──── verifyIdToken ─────►│
-     │                          │◄─── decoded token ──────│
-     │                          │
-     │                          │── findOrCreateUser() ──►[Supabase]
-     │                          │── generateTokens() ─────►[JWT pair]
-     │                          │── storeRefreshToken() ──►[Supabase]
-     │
-     │◄── { accessToken(15m), refreshToken(7d), user } ───│
-     │
-     │  (stores both in localStorage + Zustand)
-     │
-     │  [ On token expiry — automatic refresh ]
-     │──── POST /api/auth/refresh ─────────────────────────►│
-     │                          │── verifyRefreshToken() ──►│
-     │                          │── revokeOldToken() ───────►[Supabase]
-     │                          │── storeNewToken() ─────────►[Supabase]
-     │◄─── { new accessToken, new refreshToken } ───────────│
+The client is built using a clean hierarchical structure with dedicated layout shells, protected routes, and custom interactive visualization modules:
+
+```mermaid
+graph TD
+    App["App.tsx (Root Application Shell)"]
+    EB["ErrorBoundary (Fail-safe Fallback UI)"]
+    TP["ThemeProvider (Sleek Obsidian Theme)"]
+    Router["BrowserRouter"]
+    Shell["AppShell (Responsive Layout & Nav)"]
+    Sidebar["Sidebar Component (Nav Links + Profile + Logout)"]
+    Guard["Route Guards (ProtectedRoute & GuestRoute)"]
+
+    App --> EB --> TP --> Router --> Shell
+    Shell --> Sidebar
+    Shell --> Guard
+
+    subgraph Pages["Application Pages"]
+        Login["/login · Login (Email Magic, Firebase, Google, Supabase)"]
+        Upload["/upload · UploadResume (Dropzone, Text Extraction, Analysis Trigger)"]
+        Dashboard["/dashboard · Dashboard (Readiness Score, Skill Cloud, Quick Metrics)"]
+        ResumeResult["/result · ResumeResult (Full Breakdown, Extracted Skills, Raw Data)"]
+        SkillsGap["/skills-gap · SkillsGap (Missing Stack, Priorities, Remediation)"]
+        CareerPath["/career-path · CareerPath (Role Match Matrix, Salary Tiers)"]
+        ATSCheck["/ats-check · ATSCheck (Interactive 5-Pillar Audit & Checklist)"]
+        History["/history · History (Chronological Audits & Comparative Delta Diff)"]
+        Profile["/profile · Profile (User Profile, Session Info, Account Security)"]
+    end
+
+    Guard --> Pages
+
+    subgraph VisualComponents["Interactive Custom Visualizations"]
+        ATSSphere["ATSSphere (Canvas-based 3D Particle Sphere)"]
+        RoleMatchCard["RoleMatchCard (Job benchmark match & salary gauges)"]
+        KeycapOrb["KeycapOrb (3D Tactile Orb Animation)"]
+        BreakdownRadar["ScoreBreakdown Radar & Category Radial"]
+        HistoryDiff["Comparative Delta Visualizer (+/- Gain)"]
+    end
+
+    ATSCheck --> ATSSphere
+    CareerPath --> RoleMatchCard
+    Login --> KeycapOrb
+    Dashboard --> BreakdownRadar
+    History --> HistoryDiff
 ```
 
 ---
 
-## 🗂️ Project Structure
+## 🔄 End-to-End Data & Execution Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / Browser
+    participant React as React Client (Vite)
+    participant NodeAPI as Node.js Gateway (:5000)
+    participant PythonAI as Python AI Engine (:8000)
+    participant DB as Supabase PostgreSQL
+
+    Note over User,DB: Phase 1: Resume Upload & Analysis Flow
+    User->>React: Pastes resume text or uploads .txt file
+    React->>React: Validate content (50 to 50,000 characters)
+    React->>NodeAPI: POST /api/upload-resume (Authorization: Bearer <JWT>)
+    NodeAPI->>NodeAPI: Verify JWT signature & rate limiter (100 / 15m)
+    NodeAPI->>PythonAI: POST /analyze (X-Internal-Secret: <SECRET>)
+    PythonAI->>PythonAI: Deterministic NLP extraction & skill matching
+    PythonAI->>PythonAI: Compute readiness score, gap skills, career paths & roadmap
+    PythonAI-->>NodeAPI: 200 OK (Clean analysis JSON)
+    NodeAPI->>DB: INSERT into analyses (user_id, email, skills, JSONB metrics)
+    DB-->>NodeAPI: Saved record (id: UUID)
+    NodeAPI-->>React: 200 OK ({ ...aiData, id: UUID })
+    React->>React: Store in localStorage + Zustand & navigate to /dashboard
+
+    Note over User,DB: Phase 2: ATS 5-Pillar Verification Flow
+    User->>React: Navigates to /ats-check & inputs Target Role
+    React->>NodeAPI: POST /api/ats-check { resume: text, target_role: string }
+    NodeAPI->>PythonAI: POST /ats-check (X-Internal-Secret)
+    PythonAI->>PythonAI: Execute formatting, section, date, keyword & integrity tests
+    PythonAI-->>NodeAPI: 200 OK ({ ats_score, grade, checks, tips })
+    NodeAPI-->>React: 200 OK
+    React->>User: Render ATSSphere, score dial, checklist & keyword gaps
+```
+
+---
+
+## 🔐 Multi-Provider Authentication & Token Rotation
+
+Futrix AI supports multi-channel identity verification (Email Magic Link, Google Identity Services, Firebase Admin, and Supabase OAuth), followed by issuance of short-lived access JWTs and rolling refresh tokens stored in PostgreSQL.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User
+    participant Client as React Client
+    participant API as Node Gateway
+    participant AuthProvider as Firebase / Google / Supabase
+    participant DB as Supabase DB
+
+    User->>Client: Sign in (Email, Firebase, Google, or Supabase)
+    Client->>AuthProvider: Authenticate & receive credential token
+    AuthProvider-->>Client: Provider Token (idToken / accessToken)
+    Client->>API: POST /api/auth/firebase (or /supabase, /google, /login)
+    API->>AuthProvider: Verify cryptographic signature
+    AuthProvider-->>API: Verified User Profile (email, uid, avatar)
+    API->>DB: Find or create user record (users table)
+    API->>API: Generate Access Token (15m) & Refresh Token (7d)
+    API->>DB: Store hashed refresh token in refresh_tokens table
+    API-->>Client: { accessToken, refreshToken, user }
+    Client->>Client: Cache in localStorage & Zustand store
+
+    Note over Client,DB: Automatic Rolling Token Refresh
+    Client->>API: API Request with expired Access Token
+    API-->>Client: 401 Unauthorized
+    Client->>API: POST /api/auth/refresh { refreshToken }
+    API->>DB: Check if token exists and is NOT revoked
+    API->>DB: Revoke old token (Token Invalidation)
+    API->>API: Generate new token pair
+    API->>DB: Persist new active refresh token
+    API-->>Client: { accessToken: new, refreshToken: new }
+    Client->>API: Retry original request seamlessly
+```
+
+---
+
+## 🧠 Deterministic AI Engine & 5-Pillar ATS Heuristics
+
+Unlike non-deterministic LLMs that frequently hallucinate skills or output inconsistent scores, Futrix AI uses a **deterministic, rule-grounded NLP engine**:
+
+1. **Skill Taxonomy & Verification**: Matches exact word boundaries and aliases against `skills_db.json` across 40+ technology categories (Languages, Frameworks, Cloud, Databases, DevOps, Data Science, Architecture).
+2. **5-Pillar ATS Audit Engine**:
+   - **Formatting Risk**: Flags tables, special symbols, multiple consecutive whitespace, and non-ASCII anomalies.
+   - **Section Completeness**: Assesses presence of critical resume sections (`Experience`, `Education`, `Skills`, `Projects`, `Summary`).
+   - **Date Parseability**: Detects chronologies, standard month/year formats, and career gaps.
+   - **Keyword Alignment**: Cross-matches resume content against target role keywords and highlights missing terminology.
+   - **File Integrity & Density**: Audits character count, word density, and bullet point distribution.
+
+---
+
+## 🗂️ Project Directory Structure
 
 ```
 Futrix-Ai/
-├── client/                    ← React 18 + Vite + TypeScript
+├── client/                                 # React 18 + TypeScript + Vite Client
 │   ├── src/
-│   │   ├── pages/             ← Login · UploadResume · Dashboard · History
-│   │   │                         ResumeResult · SkillsGap · CareerPath
-│   │   │                         ATSCheck · Profile
-│   │   ├── services/
-│   │   │   ├── apiService.ts  ← PRIMARY http client (fetch + auto-refresh)
-│   │   │   ├── api.ts         ← Legacy axios instance (only kept for reference)
-│   │   │   ├── firebase.ts    ← Firebase Web SDK auth helpers
-│   │   │   └── resumeParser.ts← Client-side .txt file reader
-│   │   ├── store/
-│   │   │   ├── useAuth.ts     ← Zustand auth state (tokens + user)
-│   │   │   └── useResume.ts   ← Resume analysis result state
-│   │   └── components/        ← Sidebar · ScoreRing · Charts · ServiceStatus
-│   └── vite.config.ts         ← Dev proxy: /api → localhost:5000
+│   │   ├── components/                     # Reusable UI widgets & layouts
+│   │   │   ├── charts/
+│   │   │   │   └── ATSSphere.tsx           # Interactive 3D Canvas ATS particle sphere
+│   │   │   ├── ui/                         # Modern tactile UI components (KeycapOrb, etc.)
+│   │   │   ├── RoleMatchCard.tsx           # Career path matching card
+│   │   │   ├── ScoreRing.tsx               # Circular readiness score indicator
+│   │   │   └── Sidebar.tsx                 # Navigation bar with responsive mobile drawer
+│   │   ├── config/                         # Theme definitions & configuration
+│   │   ├── pages/                          # Primary view routes
+│   │   │   ├── ATSCheck.tsx                # ATS 5-pillar heuristic checker
+│   │   │   ├── CareerPath.tsx              # Role matching & salary projection
+│   │   │   ├── Dashboard.tsx               # Overview dashboard & quick actions
+│   │   │   ├── History.tsx                 # Historical audit records & comparative delta
+│   │   │   ├── Login.tsx                   # Multi-provider login screen
+│   │   │   ├── Profile.tsx                 # User profile & account preferences
+│   │   │   ├── ResumeResult.tsx            # Deep-dive analysis view
+│   │   │   ├── SkillsGap.tsx               # Skill gap analysis & prioritized roadmap
+│   │   │   └── UploadResume.tsx            # Dropzone & resume submission page
+│   │   ├── services/                       # API integration layer
+│   │   │   ├── apiService.ts               # Primary resilient HTTP client with auto-refresh
+│   │   │   ├── api.ts                      # Axios service instance
+│   │   │   ├── firebase.ts                 # Firebase client SDK initialization
+│   │   │   ├── supabase.ts                 # Supabase client SDK initialization
+│   │   │   └── resumeParser.ts             # Client-side text parsing & validation
+│   │   ├── store/                          # Zustand state stores
+│   │   │   ├── useAuth.ts                  # Authentication & session store
+│   │   │   ├── useResume.ts                # Active analysis result store
+│   │   │   └── useErrorStore.ts            # Global error notification state
+│   │   └── styles/                         # Modular CSS styles
+│   ├── vite.config.ts                      # Vite build configuration & dev proxy error handler
+│   └── package.json
 │
-├── node-api/                  ← Express v5 + Node 18+
-│   ├── server.js              ← App entry, CORS, health endpoint
-│   ├── routes/
-│   │   └── userRoutes.js      ← All API routes (auth + resume + profile)
-│   ├── middleware/
-│   │   ├── auth.js            ← JWT Bearer token verification
-│   │   └── rateLimiter.js     ← In-memory sliding-window rate limiter
+├── node-api/                               # Express Gateway & BFF (Node.js)
 │   ├── db/
-│   │   ├── supabaseClient.js  ← Supabase client + in-memory fallback
-│   │   ├── userRepo.js        ← User CRUD (Supabase)
-│   │   ├── analysisRepo.js    ← Analysis CRUD (Supabase)
-│   │   └── refreshTokenRepo.js← Token rotation + revocation
-│   └── utils/
-│       ├── authUtils.js       ← JWT sign/verify helpers
-│       ├── firebaseAdmin.js   ← Firebase Admin SDK (multi-source init)
-│       └── serviceWarmer.js   ← Keeps Python AI warm in production
+│   │   ├── supabaseClient.js               # Supabase PostgreSQL client connection pool
+│   │   ├── userRepo.js                     # User entity database operations
+│   │   ├── analysisRepo.js                 # Analysis entity database operations
+│   │   └── refreshTokenRepo.js             # Token persistence & rotation repository
+│   ├── middleware/
+│   │   ├── auth.js                         # JWT Bearer token verification middleware
+│   │   └── rateLimiter.js                  # Sliding-window rate limiting
+│   ├── routes/
+│   │   └── userRoutes.js                   # Application route handlers (Auth, Resume, ATS, Jobs)
+│   ├── utils/
+│   │   ├── authUtils.js                    # JWT signing & verification helpers
+│   │   ├── firebaseAdmin.js                # Firebase Admin SDK initialization
+│   │   └── serviceWarmer.js                # Cold-start keep-alive warmer
+│   ├── tests/
+│   │   └── test-db-integration.js          # 31-point comprehensive integration test suite
+│   ├── server.js                           # Express entry point & middleware orchestrator
+│   └── package.json
 │
-├── python-ai/                 ← FastAPI + Uvicorn
-│   ├── main.py                ← FastAPI app + route definitions
-│   ├── ai_engine.py           ← NLP engine (skill extraction, scoring, ATS)
-│   └── skills_db.json         ← 40+ known tech skills database
+├── python-ai/                              # Deterministic NLP Microservice (FastAPI)
+│   ├── tests/
+│   │   ├── test_ats.py                     # ATS heuristic unit & property test suite
+│   │   └── test_skills.py                  # NLP skill extraction test suite
+│   ├── ai_engine.py                        # Core NLP extraction, scoring, & ATS algorithm
+│   ├── skills_db.json                      # 40+ technology taxonomy & benchmark skills
+│   ├── main.py                             # FastAPI endpoints & internal auth verification
+│   └── requirements.txt                    # Python dependencies (FastAPI, Uvicorn, Pydantic)
 │
-├── render.yaml                ← Render.com deployment config
-├── .agents/rules/PROJECT_RULES.md ← Mandatory project coding rules
-└── .gitignore
+├── docs/                                   # Project documentation & architectural blueprints
+│   ├── DEPLOYMENT_GUIDE.md                 # Production deployment runbook
+│   ├── FUTRIX_AI_MASTER_SPECIFICATION.md   # Complete system specification
+│   └── MIGRATION.md                        # Database migration & schema history
+├── package.json                            # Monorepo root scripts (dev, test, lint)
+└── README.md
 ```
 
 ---
 
 ## 🔌 API Endpoint Reference
 
-### Node API (`/api`) — Public base: `https://futrix-node-api.onrender.com`
+### Gateway API (`node-api`) — Port `5000` (Public / BFF)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `POST` | `/api/login` | — | Email magic login → JWT pair |
-| `POST` | `/api/auth/firebase` | — | Firebase ID token → JWT pair |
-| `POST` | `/api/auth/refresh` | — | Rotate refresh token (invalidates old) |
-| `POST` | `/api/auth/logout` | — | Revoke refresh token server-side |
-| `GET` | `/api/auth/verify` | ✅ | Validate JWT + return user profile |
-| `GET` | `/api/profile` | ✅ | Fetch authenticated user profile |
-| `PUT` | `/api/profile` | ✅ | Update name / avatar |
-| `POST` | `/api/upload-resume` | ✅ | Analyze resume → save → return AI data |
-| `GET` | `/api/history` | ✅ | User's analysis history (by JWT, max 20) |
-| `GET` | `/api/compare?id1=&id2=` | ✅ | Compare two analyses (IDOR protected) |
-| `POST` | `/api/jobs/match` | ✅ | Match skill array to job database |
-| `POST` | `/api/ats-check` | ✅ | ATS heuristic audit via Python AI |
-| `GET` | `/health` | — | Service health + DB status |
+| Method | Endpoint | Auth | Rate Limit | Description |
+|:------:|:---------|:----:|:----------:|:------------|
+| `GET` | `/health` | Public | — | Health probe, uptime, DB connectivity status |
+| `POST` | `/api/login` | Public | 10 / 15m | Passwordless / email magic login & token issuance |
+| `POST` | `/api/auth/firebase` | Public | 20 / 15m | Verify Firebase ID token & issue JWT pair |
+| `POST` | `/api/auth/supabase` | Public | 20 / 15m | Verify Supabase access token & issue JWT pair |
+| `POST` | `/api/auth/google` | Public | 20 / 15m | Verify Google OAuth2 / GIS credential |
+| `POST` | `/api/auth/refresh` | Public | — | Rotate refresh token (revokes old token) |
+| `POST` | `/api/auth/logout` | Bearer JWT | — | Invalidate all refresh tokens for current user |
+| `GET` | `/api/auth/verify` | Bearer JWT | — | Verify access token validity and return user details |
+| `GET` | `/api/profile` | Bearer JWT | — | Fetch authenticated user's profile |
+| `PUT` | `/api/profile` | Bearer JWT | — | Update profile name and avatar |
+| `POST` | `/api/upload-resume` | Bearer JWT | 100 / 15m | Analyze resume via Python AI and persist results |
+| `GET` | `/api/history` | Bearer JWT | — | Fetch user's analysis history (scoped by email) |
+| `GET` | `/api/compare` | Bearer JWT | — | Compare two analyses by `?id1=&id2=` with IDOR check |
+| `POST` | `/api/jobs/match` | Bearer JWT | — | Rank target job roles against detected skills |
+| `POST` | `/api/ats-check` | Bearer JWT | — | Run 5-pillar ATS heuristic check on resume text |
 
-### Python AI — Internal only (called by Node API)
+### Python AI Engine (`python-ai`) — Port `8000` (Internal Service)
+
+> Protected via `X-Internal-Secret` header matching `INTERNAL_API_SECRET`.
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/analyze` | Full resume NLP analysis |
-| `POST` | `/ats-check` | ATS 5-pillar audit |
-| `POST` | `/score-breakdown` | Score breakdown only |
-| `POST` | `/career-path` | Career path from skills list |
-| `POST` | `/compare` | Compare two resume texts |
-| `GET` | `/health` | Health check |
-
-> All Python endpoints except `/health` require `X-Internal-Secret` header matching `INTERNAL_API_SECRET`.
+|:------:|:---------|:------------|
+| `GET` | `/health` | Microservice liveness probe |
+| `POST` | `/analyze` | Deterministic NLP skill extraction, readiness score, and roadmap |
+| `POST` | `/ats-check` | 5-pillar ATS heuristic audit (formatting, sections, dates, keywords, integrity) |
+| `POST` | `/score-breakdown`| Granular category score breakdown calculation |
+| `POST` | `/career-path` | Benchmark comparison against career catalog |
+| `POST` | `/compare` | Comparative diff between two resume payloads |
 
 ---
 
-## 🗃️ Database Schema
+## 🗃️ Database Entity-Relationship Model
 
-```sql
--- Users table (Supabase PostgreSQL)
-CREATE TABLE users (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email         TEXT UNIQUE NOT NULL,
-  name          TEXT,
-  auth_provider TEXT DEFAULT 'email',
-  firebase_uid  TEXT,
-  google_id     TEXT,
-  avatar        TEXT,
-  login_attempts INT DEFAULT 0,
-  lock_until    TIMESTAMPTZ,
-  last_login    TIMESTAMPTZ,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
-);
+```mermaid
+erDiagram
+    USERS ||--o{ ANALYSES : owns
+    USERS ||--o{ REFRESH_TOKENS : issues
 
--- Analyses table
-CREATE TABLE analyses (
-  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id               UUID REFERENCES users(id),
-  email                 TEXT NOT NULL,
-  resume_text           TEXT,
-  skills                TEXT[] DEFAULT '{}',
-  gap_skills            TEXT[] DEFAULT '{}',
-  readiness_score       NUMERIC DEFAULT 0,
-  roadmap               TEXT[] DEFAULT '{}',
-  score_breakdown       JSONB,
-  career_paths          JSONB DEFAULT '[]',
-  skill_weights         JSONB DEFAULT '[]',
-  category_distribution JSONB DEFAULT '[]',
-  readiness_trajectory  JSONB,
-  created_at            TIMESTAMPTZ DEFAULT NOW(),
-  updated_at            TIMESTAMPTZ DEFAULT NOW()
-);
+    USERS {
+        uuid id PK "gen_random_uuid()"
+        text email UK "Unique user email"
+        text name "Display name"
+        text auth_provider "'email' | 'firebase' | 'supabase' | 'google'"
+        text firebase_uid "External Provider UID"
+        text google_id "Google OAuth Subject ID"
+        text avatar "Avatar URL"
+        int login_attempts "Failed attempt counter"
+        timestamptz lock_until "Account lockout timestamp"
+        timestamptz last_login "Last successful login"
+        timestamptz created_at "Account creation timestamp"
+        timestamptz updated_at "Record update timestamp"
+    }
 
--- Refresh tokens table
-CREATE TABLE refresh_tokens (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    UUID REFERENCES users(id),
-  token_hash TEXT NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL,
-  revoked_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+    ANALYSES {
+        uuid id PK "gen_random_uuid()"
+        uuid user_id FK "References USERS(id)"
+        text email "User email for indexed querying"
+        text resume_text "Raw sanitized input text"
+        text[] skills "Detected technology skills"
+        text[] gap_skills "Identified missing skills"
+        numeric readiness_score "0 to 100 calculated score"
+        text[] roadmap "Sequential recommended learning roadmap"
+        jsonb score_breakdown "Category score breakdown metrics"
+        jsonb career_paths "Matched career paths and percentages"
+        jsonb skill_weights "Normalized individual skill weights"
+        jsonb category_distribution "Category distribution breakdown"
+        jsonb readiness_trajectory "Growth projections"
+        timestamptz created_at "Analysis timestamp"
+        timestamptz updated_at "Record update timestamp"
+    }
+
+    REFRESH_TOKENS {
+        uuid id PK "gen_random_uuid()"
+        uuid user_id FK "References USERS(id)"
+        text token_hash "SHA-256 hash of refresh token"
+        timestamptz expires_at "Token expiration timestamp (7 days)"
+        timestamptz revoked_at "Token revocation timestamp (rotation)"
+        timestamptz created_at "Creation timestamp"
+    }
 ```
 
 ---
 
-## 🚀 Local Development Setup
+## 🚀 Local Development & Testing
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.11+
-- A Supabase project (or run with in-memory fallback)
-- Firebase project with Web + Admin SDK credentials
+- **Node.js** v18+ (tested on Node v22)
+- **Python** v3.11+ (tested on Python 3.14)
+- **Supabase** instance (or active development credentials)
 
-### 1. Clone & Install
+### 1. Installation
 
 ```bash
+# Clone the repository
 git clone https://github.com/kirtan597/Futrix-Ai.git
 cd Futrix-Ai
 
 # Install root dependencies
 npm install
 
-# Install client dependencies
-cd client && npm install && cd ..
+# Install all sub-project dependencies
+npm run install:all
 
-# Install node-api dependencies
-cd node-api && npm install && cd ..
-
-# Install python-ai dependencies
+# Install Python microservice requirements
 cd python-ai && pip install -r requirements.txt && cd ..
 ```
 
-### 2. Configure Environment
+### 2. Environment Configuration
+
+Create `.env` files in `node-api/`, `client/`, and `python-ai/`:
 
 ```bash
-# Node API
-cp node-api/.env.example node-api/.env
-# Edit node-api/.env with your Supabase + Firebase credentials
+# Node API: node-api/.env
+PORT=5000
+NODE_ENV=development
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+JWT_SECRET=your_jwt_secret_at_least_32_chars
+JWT_REFRESH_SECRET=your_jwt_refresh_secret_at_least_32_chars
+INTERNAL_API_SECRET=shared_secret_between_node_and_python
+PYTHON_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:5173
 
-# Client
-cp client/.env.example client/.env
-# Edit client/.env with your Firebase web config + VITE_API_URL=http://localhost:5000
+# Python AI: python-ai/.env
+INTERNAL_API_SECRET=shared_secret_between_node_and_python
+ALLOWED_ORIGINS=http://localhost:5000,http://localhost:5173
 
-# Python AI
-# Copy and set INTERNAL_API_SECRET (must match node-api)
-echo "INTERNAL_API_SECRET=your_secret_here" > python-ai/.env
+# Client: client/.env
+VITE_API_URL=http://localhost:5000
 ```
 
-### 3. Run All Services
+### 3. Running Services Concurrently
+
+Run all three tiers with a single command:
 
 ```bash
-# Terminal 1 — Python AI Engine (port 8000)
-cd python-ai
-uvicorn main:app --reload --port 8000
-
-# Terminal 2 — Node API (port 5000)
-cd node-api
-node server.js
-
-# Terminal 3 — React Client (port 5173)
-cd client
 npm run dev
 ```
 
-> The Vite dev proxy automatically routes `/api/*` → `localhost:5000`, so no CORS issues in dev.
+| Service | Port | Local URL |
+|:--------|:----:|:----------|
+| **React Client (Vite)** | `5173` | [http://localhost:5173](http://localhost:5173) |
+| **Node API Gateway** | `5000` | [http://localhost:5000/health](http://localhost:5000/health) |
+| **Python AI Engine** | `8000` | [http://localhost:8000/health](http://localhost:8000/health) |
 
----
+### 4. Running Verification Test Suites
 
-## ☁️ Production Deployment (Render + Netlify)
+```bash
+# Run all automated test suites
+npm test
 
-### Services on Render
-
-| Service | Runtime | Root Dir | Start Command |
-|---------|---------|----------|---------------|
-| `futrix-node-api` | Node 18 | `node-api/` | `node server.js` |
-| `futrix-python-ai` | Python 3.11 | `python-ai/` | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
-
-### Required Environment Variables
-
-**`futrix-node-api` (Render dashboard)**
-```
-NODE_ENV              = production
-SUPABASE_URL          = https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY = <service role key>
-JWT_SECRET            = <auto-generated>
-JWT_REFRESH_SECRET    = <auto-generated>
-INTERNAL_API_SECRET   = <auto-generated — copy this value to python-ai>
-PYTHON_URL            = https://futrix-python-ai.onrender.com
-FRONTEND_URL          = https://futrixai.netlify.app
-FIREBASE_PROJECT_ID   = futrix-ai
-FIREBASE_CLIENT_EMAIL = firebase-adminsdk-...@futrix-ai.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY  = -----BEGIN PRIVATE KEY-----\n...
-```
-
-**`futrix-python-ai` (Render dashboard)**
-```
-INTERNAL_API_SECRET = <same value as node-api>
-ALLOWED_ORIGINS     = https://futrix-node-api.onrender.com,https://futrixai.netlify.app
-```
-
-**Netlify (client environment)**
-```
-VITE_API_URL                     = https://futrix-node-api.onrender.com
-VITE_FIREBASE_API_KEY            = ...
-VITE_FIREBASE_AUTH_DOMAIN        = futrix-ai.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID         = futrix-ai
-VITE_FIREBASE_STORAGE_BUCKET     = futrix-ai.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID= ...
-VITE_FIREBASE_APP_ID             = ...
+# Or run tests individually per service:
+npm run test:python   # 74 pytest assertions (NLP + ATS heuristics)
+npm run test:node     # 31 Node.js integration assertions (DB + Auth + IDOR)
+npm run test:client   # TypeScript compilation + Vite production bundle + ESLint
 ```
 
 ---
 
-## 🔑 Security Model
+## ☁️ Production Deployment
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Layer            │  Mechanism                              │
-├─────────────────────────────────────────────────────────────│
-│  Firebase Auth    │  Email/password + Google OAuth          │
-│  JWT Access       │  HS256 · 15 minute TTL                  │
-│  JWT Refresh      │  HS256 · 7 day TTL · DB-tracked         │
-│  Token Rotation   │  Old token revoked on every refresh     │
-│  IDOR Protection  │  owner check on all user-scoped data    │
-│  Rate Limiting    │  10/login · 20/firebase · 100/resume    │
-│  Internal Auth    │  X-Internal-Secret (Node→Python)        │
-│  CORS             │  Strict origin whitelist (no wildcard)  │
-│  Input Validation │  min 50 / max 50,000 chars on resume    │
-└─────────────────────────────────────────────────────────────┘
-```
+Futrix AI is optimized for cloud deployment across Render, Netlify, and Supabase:
+
+- **Frontend Client**: Deployed to Netlify / Vercel with SPA routing rewrites.
+- **Node Gateway**: Deployed as a Web Service on Render (Docker / Node 18+).
+- **Python AI Microservice**: Deployed as a Web Service on Render (Docker / Python 3.11+).
+- **Database**: Managed Supabase PostgreSQL with automated daily backups.
+
+Refer to [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) for step-by-step production setup and DNS routing.
 
 ---
 
-## 🧠 AI Engine — How It Works
+## 🔒 Security Model & Rate Limiting
 
-```
-Resume Text Input (plain text)
-        │
-        ▼
-┌──────────────────────┐
-│  Skill Extraction    │  Word-boundary regex + substring match
-│  against skills_db   │  40+ known technologies · zero hallucination
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐   ┌──────────────────────┐
-│  Gap Detection       │   │  Score Breakdown      │
-│  (detected vs role   │   │  skill_match          │
-│   benchmark skills)  │   │  stack_balance        │
-└──────────┬───────────┘   │  cloud_presence       │
-           │               │  devops_score         │
-           ▼               └──────────────────────┘
-┌──────────────────────┐
-│  Readiness Score     │  0–100 composite weighted score
-│  (0–100)             │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐   ┌──────────────────────┐
-│  Career Path Match   │   │  ATS 5-Pillar Audit   │
-│  Role catalog match% │   │  • Formatting risk    │
-│  Salary ranges       │   │  • Section presence   │
-│  Missing skills      │   │  • Date parseability  │
-└──────────────────────┘   │  • Keyword match      │
-                           │  • File integrity     │
-                           └──────────────────────┘
-```
-
----
-
-## 🖥️ Client Pages
-
-| Route | Page | API Calls |
-|-------|------|-----------|
-| `/login` | Login | `POST /api/auth/firebase` |
-| `/upload` | Upload Resume | `POST /api/upload-resume` |
-| `/dashboard` | Dashboard | localStorage (`analysisResult`) |
-| `/result` | Resume Result | localStorage + `GET /api/history` |
-| `/skills-gap` | Skills Gap | localStorage + `GET /api/history` |
-| `/career-path` | Career Path | localStorage + `GET /api/history` |
-| `/ats-check` | ATS Audit | `POST /api/ats-check` |
-| `/history` | History | `GET /api/history` |
-| `/profile` | Profile | `GET /api/profile` · `GET /api/history` |
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18 · TypeScript · Vite · Material UI v5 |
-| State | Zustand |
-| Charts | Recharts · Framer Motion |
-| Auth (client) | Firebase Web SDK v10 |
-| HTTP Client | `apiService.ts` (fetch + auto token-refresh) |
-| API Server | Node.js 18 · Express v5 |
-| Auth (server) | Firebase Admin SDK · jsonwebtoken |
-| Database | Supabase (PostgreSQL) · In-memory fallback (dev) |
-| AI Engine | Python 3.11 · FastAPI · Uvicorn |
-| Deployment | Render (Node + Python) · Netlify (React) |
-
----
-
-## 📋 Rate Limits
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `POST /api/login` | 10 requests | 15 min |
-| `POST /api/auth/firebase` | 20 requests | 15 min |
-| `POST /api/upload-resume` | 100 requests | 15 min |
-
----
-
-## 🤝 Contributing
-
-1. Read [`.agents/rules/PROJECT_RULES.md`](.agents/rules/PROJECT_RULES.md) — mandatory rules for all contributions
-2. All API calls from the client **must** use `apiService` from `services/apiService.ts`
-3. All protected Node API routes **must** use the `auth` middleware
-4. All Python endpoints except `/health` **must** validate `X-Internal-Secret`
-5. Never commit `.env` files or `serviceAccountKey.json`
+- **Zero-Trust Hop-by-Hop Authentication**: Client communicates strictly via signed JWT Bearer tokens. Internal calls from Node Gateway to Python AI require `X-Internal-Secret`.
+- **Anti-IDOR Isolation**: Analysis lookups and comparison endpoints enforce cryptographic identity verification (`req.user.email === analysis.email`).
+- **Account Brute-Force Protection**: 5 consecutive failed login attempts trigger an automated account lock for 15 minutes.
+- **Sliding-Window Rate Limiting**: In-memory rate limiting throttles abuse on public authentication endpoints.
+- **Strict Content Security**: Cross-Origin-Opener-Policy (`same-origin-allow-popups`) and strict origin whitelisting prevent unauthorized cross-origin embeddings.
 
 ---
 
 <div align="center">
 
-Built with ⚡ by [Kirtan](https://github.com/kirtan597) · Powered by Firebase · Supabase · Render · Netlify
+**Built with precision by [Kirtan](https://github.com/kirtan597)**
+
+*Futrix AI · Autonomous Career Intelligence*
 
 </div>

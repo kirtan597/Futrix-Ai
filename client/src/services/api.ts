@@ -151,6 +151,9 @@ interface AuthUser {
 export const loginUser = (email: string) =>
     api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/api/login', { email });
 
+export const supabaseLogin = (accessToken: string) =>
+    api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/api/auth/supabase', { accessToken });
+
 export const firebaseLogin = (idToken: string) =>
     api.post<{ status: string; accessToken: string; refreshToken: string; user: AuthUser }>('/api/auth/firebase', { idToken });
 

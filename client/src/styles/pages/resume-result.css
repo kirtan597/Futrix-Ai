@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   resume-result.css — Futrix AI
+   Resume Result page styles — analysis cards, score breakdown, suggestions
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All resume-result page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+

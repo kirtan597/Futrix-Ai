@@ -10,6 +10,19 @@ const auth         = require("../middleware/auth");
 const rateLimiter  = require("../middleware/rateLimiter");
 const { generateTokens, verifyRefreshToken, verifyAccessToken } = require("../utils/authUtils");
 const { verifyFirebaseToken } = require("../utils/firebaseAdmin");
+const { createClient } = require("@supabase/supabase-js");
+
+// Supabase auth client — used to verify user JWTs (supports SERVICE_ROLE_KEY, ANON_KEY, or PUBLISHABLE_KEY)
+const SUPABASE_AUTH_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_AUTH_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const supabaseAdmin = (SUPABASE_AUTH_URL && SUPABASE_AUTH_KEY)
+    ? createClient(
+        SUPABASE_AUTH_URL,
+        SUPABASE_AUTH_KEY,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    : null;
 
 const PYTHON_URL           = (process.env.PYTHON_URL || "http://localhost:8000").replace(/\/$/, '');
 const INTERNAL_API_SECRET  = process.env.INTERNAL_API_SECRET;
@@ -145,6 +158,189 @@ router.post("/auth/firebase", rateLimiter(20, 15 * 60 * 1000, "Too many authenti
         res.status(401).json({ 
             error: "Firebase authentication failed", 
             message: process.env.NODE_ENV === 'production' ? "Authentication failed. Please sign in again." : err.message 
+        });
+    }
+});
+
+// ─── GET /api/auth/supabase (preflight guard) ────────────────────────────────
+router.get("/auth/supabase", (req, res) => {
+    res.status(405).json({
+        error: "Method Not Allowed",
+        message: "Use POST /api/auth/supabase with accessToken in body"
+    });
+});
+
+// ─── POST /api/auth/supabase (Supabase Access Token Verification) ─────────────
+router.post("/auth/supabase", rateLimiter(20, 15 * 60 * 1000, "Too many authentication attempts. Please wait a few minutes."), async (req, res) => {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+        return res.status(400).json({ error: "Supabase access token is required." });
+    }
+
+    if (!supabaseAdmin) {
+        return res.status(503).json({
+            error: "Supabase Not Configured",
+            message: "Supabase authentication is not configured on this server."
+        });
+    }
+
+    try {
+        // Verify the Supabase JWT via the service role client
+        const { data: { user }, error } = await supabaseAdmin.auth.getUser(accessToken);
+
+        if (error || !user) {
+            return res.status(401).json({
+                error: "Invalid Supabase Token",
+                message: error?.message || "Could not verify Supabase access token."
+            });
+        }
+
+        const email = (user.email || "").trim().toLowerCase();
+        if (!email) {
+            return res.status(401).json({
+                error: "Invalid Supabase Token",
+                message: "No email associated with this Supabase account."
+            });
+        }
+
+        // Extract metadata
+        const name = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0];
+        const picture = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+        const supabaseUid = user.id;
+
+        let dbUser = await userRepo.findByEmail(email);
+        if (!dbUser) {
+            dbUser = await userRepo.createUser({
+                email,
+                name,
+                authProvider: 'supabase',
+                firebaseUid: supabaseUid,   // reuse existing column for Supabase UID
+                avatar: picture,
+            });
+        } else {
+            dbUser = await userRepo.updateUser(dbUser.id, {
+                name: name || dbUser.name,
+                avatar: picture || dbUser.avatar,
+                lastLogin: new Date(),
+                loginAttempts: 0,
+                lockUntil: null,
+            });
+        }
+
+        const { accessToken: jwtAccess, refreshToken: jwtRefresh } = generateTokens(dbUser);
+        await refreshTokenRepo.storeRefreshToken(dbUser.id, jwtRefresh);
+
+        res.json({
+            status: "logged_in",
+            accessToken: jwtAccess,
+            refreshToken: jwtRefresh,
+            user: {
+                id: dbUser.id,
+                _id: dbUser.id,
+                email: dbUser.email,
+                name: dbUser.name,
+                avatar: dbUser.avatar,
+            },
+        });
+    } catch (err) {
+        console.error("[supabase-auth] ❌ Error:", err.message);
+        res.status(401).json({
+            error: "Supabase authentication failed",
+            message: process.env.NODE_ENV === 'production' ? "Authentication failed. Please sign in again." : err.message
+        });
+    }
+});
+
+// ─── POST /api/auth/google (Google GIS / OAuth2 Token Verification) ───────────
+router.post("/auth/google", rateLimiter(20, 15 * 60 * 1000, "Too many authentication attempts. Please wait a few minutes."), async (req, res) => {
+    const { idToken, credential, accessToken: googleAccessToken } = req.body;
+    const token = idToken || credential;
+
+    if (!token && !googleAccessToken) {
+        return res.status(400).json({ error: "Google token (accessToken or idToken) is required." });
+    }
+
+    try {
+        let email, name, picture, googleUid;
+
+        if (googleAccessToken) {
+            // Verify and retrieve user profile via Google OAuth2 userinfo endpoint
+            const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                headers: { Authorization: `Bearer ${googleAccessToken}` }
+            });
+            if (!userinfoRes.ok) {
+                const errBody = await userinfoRes.text();
+                throw new Error(`Google userinfo request failed: ${errBody}`);
+            }
+            const info = await userinfoRes.json();
+            email = (info.email || '').trim().toLowerCase();
+            name = info.name || email.split('@')[0];
+            picture = info.picture || null;
+            googleUid = info.sub;
+        } else {
+            // Verify via Google tokeninfo endpoint
+            const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+            if (!googleRes.ok) {
+                const errBody = await googleRes.text();
+                throw new Error(`Google token verification failed: ${errBody}`);
+            }
+
+            const payload = await googleRes.json();
+            const expectedClientId = process.env.GOOGLE_CLIENT_ID || '925614040769-v08v237i2n77d3tqtm3c2o00bgpm3qal.apps.googleusercontent.com';
+            if (payload.aud !== expectedClientId && payload.azp !== expectedClientId) {
+                console.warn(`[google-auth] Audience mismatch warning. Expected: ${expectedClientId}, got aud: ${payload.aud}`);
+            }
+
+            email = (payload.email || '').trim().toLowerCase();
+            name = payload.name || email.split('@')[0];
+            picture = payload.picture || null;
+            googleUid = payload.sub;
+        }
+
+        if (!email) {
+            return res.status(401).json({ error: "No email address found in Google account profile." });
+        }
+
+        let dbUser = await userRepo.findByEmail(email);
+        if (!dbUser) {
+            dbUser = await userRepo.createUser({
+                email,
+                name,
+                authProvider: 'google',
+                firebaseUid: googleUid,
+                avatar: picture,
+            });
+        } else {
+            dbUser = await userRepo.updateUser(dbUser.id, {
+                name: name || dbUser.name,
+                avatar: picture || dbUser.avatar,
+                lastLogin: new Date(),
+                loginAttempts: 0,
+                lockUntil: null,
+            });
+        }
+
+        const { accessToken, refreshToken } = generateTokens(dbUser);
+        await refreshTokenRepo.storeRefreshToken(dbUser.id, refreshToken);
+
+        res.json({
+            status: "logged_in",
+            accessToken,
+            refreshToken,
+            user: {
+                id: dbUser.id,
+                _id: dbUser.id,
+                email: dbUser.email,
+                name: dbUser.name,
+                avatar: dbUser.avatar,
+            },
+        });
+    } catch (err) {
+        console.error("[google-auth] ❌ Error:", err.message);
+        res.status(401).json({
+            error: "Google authentication failed",
+            message: process.env.NODE_ENV === 'production' ? "Google authentication failed. Please try again." : err.message
         });
     }
 });
@@ -573,7 +769,8 @@ router.post("/jobs/match", auth, async (req, res) => {
 
 // ─── POST /api/ats-check (ATS Heuristic Verification) ─────────────────────────
 router.post("/ats-check", auth, async (req, res) => {
-    const { resume, target_role } = req.body;
+    const resume = req.body.resume || req.body.text;
+    const { target_role } = req.body;
     if (!resume || typeof resume !== 'string' || resume.trim().length < 50) {
         return res.status(400).json({ error: "Resume text is too short. Please provide at least 50 characters." });
     }

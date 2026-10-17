@@ -208,9 +208,6 @@ export default function Dashboard() {
                     <Typography variant="h4" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1.1, fontSize: { xs: '1.6rem', md: '2.125rem' } }}>
                         Your Dashboard
                     </Typography>
-                    <Typography sx={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.85rem', mt: 0.8 }}>
-                        AI-powered analysis · Last updated just now
-                    </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1.5, flexShrink: 0 }}>
                     <Button

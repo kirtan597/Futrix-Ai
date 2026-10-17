@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   ats-check.css — Futrix AI
+   ATS Check page styles — ATS score panel, pillar bars, recommendations
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All ats-check page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+

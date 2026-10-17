@@ -68,7 +68,7 @@ app.get("/", (req, res) => {
         message: "Futrix AI Node API v2.1.0 (PostgreSQL / Supabase)",
         endpoints: {
             health: "GET /health",
-            auth: ["POST /api/login", "POST /api/auth/firebase", "POST /api/auth/refresh", "POST /api/auth/logout", "GET /api/auth/verify"],
+            auth: ["POST /api/login", "POST /api/auth/firebase", "POST /api/auth/supabase", "POST /api/auth/refresh", "POST /api/auth/logout", "GET /api/auth/verify"],
             analysis: ["POST /api/upload-resume", "GET /api/history", "GET /api/compare"],
             jobs: ["POST /api/jobs/match"],
             ats: ["POST /api/ats-check"],

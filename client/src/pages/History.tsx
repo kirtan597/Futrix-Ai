@@ -511,11 +511,8 @@ export default function History() {
                             sx={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.08)', fontWeight: 600, fontSize: '0.72rem' }}
                         />
                     </Box>
-                    <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em', mb: 0.8, fontSize: { xs: '1.6rem', md: '2.2rem' } }}>
+                    <Typography variant="h4" fontWeight={900} sx={{ color: '#fff', letterSpacing: '-0.04em', fontSize: { xs: '1.6rem', md: '2.2rem' } }}>
                         Analysis History & Progression
-                    </Typography>
-                    <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' }}>
-                        Track skill readiness index improvements, compare evaluations, and inspect past career roadmaps.
                     </Typography>
                 </Box>
 

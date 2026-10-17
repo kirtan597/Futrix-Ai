@@ -1,0 +1,10 @@
+﻿/* =============================================================================
+   profile.css — Futrix AI
+   Profile page styles — avatar section, edit form, activity stats
+   Add page-specific CSS rules here that are not covered by MUI sx props.
+   ============================================================================= */
+
+/* ─── Page wrapper ────────────────────────────────────────────────────────── */
+/* All profile page layout customizations go below this line.                    */
+/* MUI component styles are handled via the sx prop / theme in config/theme.ts */
+
