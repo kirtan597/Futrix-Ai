@@ -83,8 +83,10 @@ def analyze(data: ResumeData):
     
     logger.info(f"Analyzing resume (text length: {len(text)} chars)")
     result = analyze_resume(text)
-    result["score_breakdown"] = score_breakdown(result["skills"])
-    result["career_paths"]    = career_paths(result["skills"])
+    if "score_breakdown" not in result or not result["score_breakdown"]:
+        result["score_breakdown"] = score_breakdown(result["skills"], text)
+    if "career_paths" not in result or not result["career_paths"]:
+        result["career_paths"]    = career_paths(result["skills"], text)
     return result
 
 @app.post("/ats-check", dependencies=[Depends(verify_internal_secret)])
