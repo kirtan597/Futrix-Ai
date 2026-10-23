@@ -2,7 +2,22 @@ const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+function getValidSupabaseKey() {
+    const candidates = [
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        process.env.SUPABASE_ANON_KEY,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ];
+    for (const key of candidates) {
+        if (key && !key.includes('placeholder') && !key.includes('your_supabase') && key.length > 20) {
+            return key;
+        }
+    }
+    return null;
+}
+
+const SUPABASE_KEY = getValidSupabaseKey();
 
 const isConfigured = Boolean(
     SUPABASE_URL &&

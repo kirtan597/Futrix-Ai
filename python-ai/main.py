@@ -4,6 +4,10 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import os
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from ai_engine import analyze_resume, score_breakdown, career_paths, compare_analyses, ats_check
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

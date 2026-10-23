@@ -9,11 +9,26 @@ const refreshTokenRepo = require("../db/refreshTokenRepo");
 const auth         = require("../middleware/auth");
 const rateLimiter  = require("../middleware/rateLimiter");
 const { generateTokens, verifyRefreshToken, verifyAccessToken } = require("../utils/authUtils");
-const { verifyFirebaseToken } = require("../utils/firebaseAdmin");
 const { createClient } = require("@supabase/supabase-js");
+const localAiEngine   = require("../utils/localAiEngine");
+
+function getValidSupabaseKey() {
+    const candidates = [
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        process.env.SUPABASE_ANON_KEY,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ];
+    for (const key of candidates) {
+        if (key && !key.includes('placeholder') && !key.includes('your_supabase') && key.length > 20) {
+            return key;
+        }
+    }
+    return null;
+}
 
 // Supabase auth client — used to verify user JWTs (supports SERVICE_ROLE_KEY, ANON_KEY, or PUBLISHABLE_KEY)
-const SUPABASE_AUTH_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_AUTH_KEY = getValidSupabaseKey();
 const SUPABASE_AUTH_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 const supabaseAdmin = (SUPABASE_AUTH_URL && SUPABASE_AUTH_KEY)
@@ -29,8 +44,12 @@ const INTERNAL_API_SECRET  = process.env.INTERNAL_API_SECRET;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// ─── GET /api/login (preflight guard) ────────────────────────────────────────
+// ─── GET /api/login (preflight guard & browser redirect) ────────────────────────
 router.get("/login", (req, res) => {
+    if (req.accepts('html')) {
+        const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, '');
+        return res.redirect(`${frontendUrl}/login`);
+    }
     res.status(405).json({ 
         error: "Method Not Allowed", 
         message: "Use POST /api/login with email in body" 
@@ -90,80 +109,12 @@ router.post("/login", rateLimiter(10, 15 * 60 * 1000, "Too many login attempts. 
     }
 });
 
-// ─── GET /api/auth/firebase (preflight guard) ─────────────────────────────────
-router.get("/auth/firebase", (req, res) => {
-    res.status(405).json({
-        error: "Method Not Allowed",
-        message: "Use POST /api/auth/firebase with idToken in body"
-    });
-});
-
-// ─── POST /api/auth/firebase (Firebase ID Token Verification) ──────────────────
-router.post("/auth/firebase", rateLimiter(20, 15 * 60 * 1000, "Too many authentication attempts. Please wait a few minutes."), async (req, res) => {
-    const { idToken } = req.body;
-    
-    if (!idToken) {
-        return res.status(400).json({ error: "Firebase ID token is required." });
-    }
-    
-    try {
-        const decoded = await verifyFirebaseToken(idToken);
-        
-        if (!decoded || !decoded.email) {
-            return res.status(401).json({
-                error: "Invalid Firebase Token",
-                message: "Firebase token payload is incomplete or missing email."
-            });
-        }
-        
-        const { email, uid, name, picture } = decoded;
-        const sanitizedEmail = email.trim().toLowerCase();
-
-        let user = await userRepo.findByEmail(sanitizedEmail);
-        if (!user) {
-            user = await userRepo.createUser({
-                email: sanitizedEmail,
-                name: name || sanitizedEmail.split('@')[0],
-                firebaseUid: uid,
-                avatar: picture,
-            });
-        } else {
-            user = await userRepo.updateUser(user.id, {
-                firebaseUid: uid || user.firebaseUid,
-                name: name || user.name,
-                avatar: picture || user.avatar,
-                lastLogin: new Date(),
-                loginAttempts: 0,
-                lockUntil: null,
-            });
-        }
-
-        const { accessToken, refreshToken } = generateTokens(user);
-        await refreshTokenRepo.storeRefreshToken(user.id, refreshToken);
-
-        res.json({ 
-            status: "logged_in", 
-            accessToken,
-            refreshToken,
-            user: { 
-                id: user.id,
-                _id: user.id,
-                email: user.email, 
-                name: user.name, 
-                avatar: user.avatar 
-            }
-        });
-    } catch (err) {
-        console.error("[firebase-auth] ❌ Error:", err.message);
-        res.status(401).json({ 
-            error: "Firebase authentication failed", 
-            message: process.env.NODE_ENV === 'production' ? "Authentication failed. Please sign in again." : err.message 
-        });
-    }
-});
-
-// ─── GET /api/auth/supabase (preflight guard) ────────────────────────────────
+// ─── GET /api/auth/supabase (preflight guard & browser redirect) ───────────────
 router.get("/auth/supabase", (req, res) => {
+    if (req.accepts('html')) {
+        const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, '');
+        return res.redirect(`${frontendUrl}/login`);
+    }
     res.status(405).json({
         error: "Method Not Allowed",
         message: "Use POST /api/auth/supabase with accessToken in body"
@@ -552,13 +503,18 @@ async function callAIServiceWithRetry(text, maxRetries = 3, initialDelay = 800) 
             lastError = err;
             const errorType = err.code || err.response?.status || 'UNKNOWN';
             
-            console.error(`[AI-Service] ❌ Attempt ${attempt}/${maxRetries} failed:`, {
+            console.error(`[AI-Service] ⚠️ Attempt ${attempt}/${maxRetries} failed:`, {
                 type: errorType,
                 status: err.response?.status,
                 message: err.message,
                 endpoint: PYTHON_URL_ENDPOINT
             });
             
+            // If service is completely offline or refused, fail immediately so fallback can engage instantly
+            if (err.code === "ECONNREFUSED") {
+                throw err;
+            }
+
             // Don't retry on 4xx client errors
             if (err.response?.status && err.response.status < 500 && err.response.status !== 503 && err.response.status !== 504) {
                 throw err;
@@ -602,42 +558,20 @@ router.post("/upload-resume", auth, rateLimiter(100, 15 * 60 * 1000, "Too many u
     console.log(`[upload-resume] 📤 POST request from user: ${req.user.email}, text length: ${sanitizedText.length} chars`);
 
     try {
-        if (!PYTHON_URL) {
-            return res.status(503).json({ error: "AI service is not properly configured." });
-        }
-
         let aiData;
         try {
-            aiData = await callAIServiceWithRetry(sanitizedText, 3, 1000);
+            aiData = await callAIServiceWithRetry(sanitizedText, 2, 800);
         } catch (aiErr) {
-            console.error("[upload-resume] ❌ AI service error:", aiErr.message);
-            
-            if (aiErr.code === "ECONNREFUSED") {
-                return res.status(503).json({ 
-                    error: "AI engine offline",
-                    message: "Cannot connect to analysis service. Please try again in a moment.",
-                    retryAfter: 10
+            console.warn(`[upload-resume] ⚠️ Python AI service unreachable (${aiErr.message}). Engaging built-in local AI engine fallback.`);
+            try {
+                aiData = localAiEngine.analyzeResume(sanitizedText);
+            } catch (fallbackErr) {
+                console.error("[upload-resume] ❌ Fallback local engine error:", fallbackErr.message);
+                return res.status(500).json({
+                    error: "Analysis failed",
+                    message: "Could not analyze resume text. Please check the content and try again."
                 });
             }
-            if (aiErr.code === "ECONNABORTED" || aiErr.message?.includes("timeout")) {
-                return res.status(503).json({ 
-                    error: "Request timeout",
-                    message: "The analysis is taking longer than expected. Please try again.",
-                    retryAfter: 5
-                });
-            }
-            if (aiErr.response?.status === 400) {
-                return res.status(400).json({ 
-                    error: aiErr.response?.data?.detail || "Invalid resume format",
-                    message: "The resume text could not be analyzed."
-                });
-            }
-            
-            return res.status(503).json({ 
-                error: "Analysis service unavailable",
-                message: "The AI engine is temporarily unavailable. Please try again shortly.",
-                retryAfter: 10
-            });
         }
 
         if (!aiData || typeof aiData !== 'object') {
@@ -784,18 +718,25 @@ router.post("/ats-check", auth, async (req, res) => {
             headers['X-Internal-Secret'] = INTERNAL_API_SECRET;
         }
 
-        const aiRes = await axios.post(
-            `${PYTHON_URL}/ats-check`,
-            { resume: resume.trim(), target_role },
-            { timeout: 30000, headers }
-        );
+        let atsData;
+        try {
+            const aiRes = await axios.post(
+                `${PYTHON_URL}/ats-check`,
+                { resume: resume.trim(), target_role },
+                { timeout: 10000, headers }
+            );
+            atsData = aiRes.data;
+        } catch (err) {
+            console.warn(`[ats-check] ⚠️ Python AI unreachable (${err.message}). Engaging built-in local ATS engine.`);
+            atsData = localAiEngine.atsCheck(resume.trim(), target_role);
+        }
 
-        res.json(aiRes.data);
+        res.json(atsData);
     } catch (err) {
         console.error("[ats-check] ❌ Error:", err.message);
-        res.status(503).json({
-            error: "ATS Service Unavailable",
-            message: "Could not complete ATS check at this time. Please try again shortly."
+        res.status(500).json({
+            error: "ATS Check Failed",
+            message: "Could not complete ATS check at this time."
         });
     }
 });

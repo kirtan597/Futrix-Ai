@@ -666,7 +666,7 @@ export default function Login() {
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 3.5, opacity: 0.4 }}>
                         <ShieldOutlinedIcon sx={{ fontSize: 14, color: '#fff' }} />
                         <Typography sx={{ color: '#fff', fontSize: '0.74rem', letterSpacing: '0.02em' }}>
-                            Secured by Firebase Auth · 15m JWT session
+                            Secured by Supabase Auth · 15m JWT session
                         </Typography>
                     </Box>
                 </Box>

@@ -187,14 +187,14 @@ class ApiService {
                     throw new Error('Unauthorized. Redirecting to login.');
                 }
                 
-                // Handle 503 with retry
-                if (res.status === 503) {
+                // Handle 502 / 503 with retry (gateway warming / backend restart)
+                if (res.status === 502 || res.status === 503) {
                     const body = await res.json().catch(() => ({}));
-                    const error = new Error(body.message || 'Service unavailable');
+                    const error = new Error(body.message || 'Service initializing');
                     
                     if (isUploadResume && attempt < maxRetries) {
                         const delayMs = initialDelay * Math.pow(2, attempt - 1);
-                        console.log(`[API] Retry ${attempt}/${maxRetries} in ${delayMs}ms`);
+                        console.log(`[API] Retry ${attempt}/${maxRetries} (${res.status}) in ${delayMs}ms`);
                         lastError = error;
                         await new Promise(r => setTimeout(r, delayMs));
                         continue;
