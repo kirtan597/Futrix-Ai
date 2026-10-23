@@ -6,7 +6,9 @@
 [build.environment]
   NODE_VERSION = "18"
   VITE_API_URL = "https://futrix-node-api.onrender.com"
-  VITE_GOOGLE_CLIENT_ID = "424357134168-gtnpk168sp23oopec177581sb62vs6o0.apps.googleusercontent.com"
+  VITE_GOOGLE_CLIENT_ID = "925614040769-v08v237i2n77d3tqtm3c2o00bgpm3qal.apps.googleusercontent.com"
+  VITE_SUPABASE_URL = "https://nbhaffytdahvurjgabcs.supabase.co"
+  VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iaGFmZnl0ZGFodnVyamdhYmNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxNDY3NzQsImV4cCI6MjEwMzcyMjc3NH0.jYJH7_2sFdHdSgqZL_NXJi4YHgW-Liv3XZK98q30s0Q"
 
 [[headers]]
   for = "/*"

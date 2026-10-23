@@ -126,7 +126,7 @@ export default function Login() {
         }
     };
 
-    const GOOGLE_CLIENT_ID = '925614040769-v08v237i2n77d3tqtm3c2o00bgpm3qal.apps.googleusercontent.com';
+    const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || '925614040769-v08v237i2n77d3tqtm3c2o00bgpm3qal.apps.googleusercontent.com';
 
     // Handle return from signInWithRedirect (Supabase OAuth callback)
     useEffect(() => {
